@@ -37,12 +37,12 @@
 
 | Task ID | Task Description | Owner | Dependency | Status | Acceptance Criteria |
 | :--- | :--- | :--- | :--- | :---: | :--- |
-| **P1-01** | Raw NWP Ingestion Parser (NetCDF4/GRIB2) | Team A | P0-07 | `[ ]` | Ingests multi-lead GFS/NCUM forecasts into memory |
-| **P1-02** | Observation Ingestion Parser (IMD/GPM) | Team A | P0-07 | `[ ]` | Ingests ground-truth observations on 0.25° grid |
-| **P1-03** | Spatial Regridding Engine (0.25° EPSG:4326) | Team A | P1-01, P1-02 | `[ ]` | Interpolates inconsistent grids to standard 0.25° grid |
-| **P1-04** | Temporal Alignment & Accumulation Aggregator | Team A | P1-03 | `[ ]` | Aggregates 24h totals from 03:00 to 03:00 UTC |
-| **P1-05** | Missing Data & Outlier Quality Control | Team A | P1-04 | `[ ]` | Replaces invalid sentinels with NaN; validates thresholds |
-| **P1-06** | Data Contract Automated Validator | Team A, G | P1-05 | `[ ]` | Automated validation of `data/interim/` against CONTRACT-DATA-001 |
+| **P1-01** | Raw NWP Ingestion Parser (NetCDF4/GRIB2) | Team A | P0-07 | `[x]` | Ingests multi-lead GFS/NCUM forecasts into memory |
+| **P1-02** | Observation Ingestion Parser (IMD/GPM) | Team A | P0-07 | `[x]` | Ingests ground-truth observations on 0.25° grid |
+| **P1-03** | Spatial Regridding Engine (0.25° EPSG:4326) | Team A | P1-01, P1-02 | `[x]` | Interpolates inconsistent grids to standard 0.25° grid |
+| **P1-04** | Temporal Alignment & Accumulation Aggregator | Team A | P1-03 | `[x]` | Aggregates 24h totals from 03:00 to 03:00 UTC |
+| **P1-05** | Missing Data & Outlier Quality Control | Team A | P1-04 | `[x]` | Replaces invalid sentinels with NaN; validates thresholds |
+| **P1-06** | Data Contract Automated Validator | Team A, G | P1-05 | `[x]` | Automated validation of `data/interim/` against CONTRACT-DATA-001 |
 
 ---
 
@@ -50,9 +50,9 @@
 
 | Task ID | Task Description | Owner | Dependency | Status | Acceptance Criteria |
 | :--- | :--- | :--- | :--- | :---: | :--- |
-| **P2-01** | DEM Topography & Slope Feature Extraction | Team B | P1-06 | `[ ]` | Computes elevation, slope, and aspect grids |
-| **P2-02** | Rolling Forecast-Error Memory Buffer | Team B | P1-06 | `[ ]` | Computes 1-to-7 day lag error matrices ($NWP - Obs$) |
-| **P2-03** | Atmospheric Dynamics Features (Shear, Vorticity) | Team B | P1-06 | `[ ]` | Extracts moisture flux convergence, U/V wind shear |
+| **P2-01** | DEM Topography & Slope Feature Extraction | Team B | P1-06 | `[x]` | Computes elevation, slope, and aspect grids |
+| **P2-02** | Rolling Forecast-Error Memory Buffer | Team B | P1-06 | `[x]` | Computes 1-to-14 day lag error matrices ($NWP - Obs$) with causal guardrails |
+| **P2-03** | Atmospheric Dynamics Features (Shear, Vorticity) | Team B | P1-06 | `[x]` | Extracts moisture flux convergence, U/V wind shear, and vorticity |
 | **P2-04** | Monsoon Synoptic Regime Classifier | Team B | P2-03 | `[ ]` | Classifies Active, Break, Depression, and Normal states |
 | **P2-05** | Baseline Deterministic Post-Processing Regressor | Team B | P2-04 | `[ ]` | Trained LightGBM/XGBoost baseline model |
 | **P2-06** | Quantile Regression Engine (P10, P50, P75, P90, P95) | Team B | P2-05 | `[ ]` | Multi-quantile models with pinball loss optimization |
