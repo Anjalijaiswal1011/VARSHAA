@@ -1,0 +1,112 @@
+# ==============================================================================
+# RAIN-REPAIR X (VARSHAA) — Git Ignore Policy
+# ==============================================================================
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Environment Variables & Secrets
+.env
+.env.local
+.env.*.local
+*.secrets
+*.pem
+*.key
+
+# IDEs & Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Jupyter Notebook Checkpoints
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*
+
+# Testing & Coverage
+.coverage
+.coverage.*
+.pytest_cache/
+htmlcov/
+junit.xml
+
+# Data Folders (Preserve structure with .gitkeep, ignore binary data)
+data/raw/*
+!data/raw/.gitkeep
+data/interim/*
+!data/interim/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+data/external/*
+!data/external/.gitkeep
+
+# Meteorological Data Formats & Large Binaries
+*.nc
+*.nc4
+*.grib
+*.grib2
+*.grb
+*.grb2
+*.tif
+*.tiff
+*.geotiff
+*.h5
+*.hdf5
+*.zarr
+*.parquet
+*.feather
+*.shp
+*.shx
+*.dbf
+*.cpg
+
+# Model Checkpoints & Weights
+models/checkpoints/*
+!models/checkpoints/.gitkeep
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.joblib
+*.pkl
+*.pickle
+*.bin
+
+# Logs
+logs/
+*.log
+
+# Frontend build outputs & dependencies
+frontend/dist/
+frontend/node_modules/
+backend/__pycache__/

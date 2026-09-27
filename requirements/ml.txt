@@ -1,0 +1,12 @@
+# ==============================================================================
+# Machine Learning & AI Requirements
+# Regressors, quantile models, clustering/regimes, evaluation metrics, SHAP
+# ==============================================================================
+-r data.txt
+scikit-learn>=1.4.0,<1.6.0
+lightgbm>=4.3.0
+xgboost>=2.0.3
+joblib>=1.4.0
+shap>=0.45.0
+matplotlib>=3.8.4
+seaborn>=0.13.2

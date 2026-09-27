@@ -1,0 +1,6 @@
+# Top-level installation pointer
+# For complete developer setup: pip install -r requirements/dev.txt
+# For runtime data engineering: pip install -r requirements/data.txt
+# For runtime ML modeling:     pip install -r requirements/ml.txt
+# For backend API service:      pip install -r requirements/api.txt
+-r requirements/dev.txt

@@ -1,0 +1,57 @@
+# ==============================================================================
+# RAIN-REPAIR X (VARSHAA) — Master Base Configuration
+# ==============================================================================
+
+project:
+  name: "RAIN-REPAIR X (VARSHAA)"
+  version: "1.0.0"
+  description: "Regime-Aware AI Post-Processing of Indian Monsoon Rainfall Forecasts"
+  environment: "development"
+  random_seed: 42
+
+paths:
+  data_raw_dir: "data/raw"
+  data_interim_dir: "data/interim"
+  data_processed_dir: "data/processed"
+  data_external_dir: "data/external"
+  models_checkpoint_dir: "models/checkpoints"
+  logs_dir: "logs"
+
+spatial_domain:
+  name: "India_Subcontinent"
+  crs: "EPSG:4326"
+  lat_min: 6.0
+  lat_max: 38.0
+  lon_min: 68.0
+  lon_max: 98.0
+  resolution_deg: 0.25
+
+temporal:
+  accumulation_hours: 24
+  cycle_hour_utc: "00:00"
+  lead_times_hours: [24, 48, 72, 96, 120]
+
+regimes:
+  taxonomy:
+    - "ACTIVE_MONSOON"
+    - "BREAK_MONSOON"
+    - "MONSOON_DEPRESSION"
+    - "WESTERN_DISTURBANCE"
+    - "OFFSHORE_TROUGH"
+    - "NORMAL_TRANSITIONAL"
+
+thresholds:
+  heavy_rain_mm: 64.5
+  very_heavy_rain_mm: 115.6
+  extreme_rain_mm: 204.5
+  quantiles: [0.10, 0.50, 0.75, 0.90, 0.95]
+
+api:
+  host: "0.0.0.0"
+  port: 8000
+  prefix: "/api/v1"
+  cors_origins:
+    - "http://localhost:3000"
+    - "http://localhost:5173"
+    - "http://127.0.0.1:3000"
+    - "http://127.0.0.1:5173"
