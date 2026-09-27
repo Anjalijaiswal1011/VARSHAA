@@ -53,12 +53,12 @@
 | **P2-01** | DEM Topography & Slope Feature Extraction | Team B | P1-06 | `[x]` | Computes elevation, slope, and aspect grids |
 | **P2-02** | Rolling Forecast-Error Memory Buffer | Team B | P1-06 | `[x]` | Computes 1-to-14 day lag error matrices ($NWP - Obs$) with causal guardrails |
 | **P2-03** | Atmospheric Dynamics Features (Shear, Vorticity) | Team B | P1-06 | `[x]` | Extracts moisture flux convergence, U/V wind shear, and vorticity |
-| **P2-04** | Monsoon Synoptic Regime Classifier | Team B | P2-03 | `[ ]` | Classifies Active, Break, Depression, and Normal states |
-| **P2-05** | Baseline Deterministic Post-Processing Regressor | Team B | P2-04 | `[ ]` | Trained LightGBM/XGBoost baseline model |
-| **P2-06** | Quantile Regression Engine (P10, P50, P75, P90, P95) | Team B | P2-05 | `[ ]` | Multi-quantile models with pinball loss optimization |
-| **P2-07** | Extreme Rainfall Threshold Classifier | Team B | P2-05 | `[ ]` | Predicts probabilities for $\ge 64.5$ mm, $\ge 115.6$ mm, $\ge 204.5$ mm |
-| **P2-08** | Physical Constraints & Monotonicity Sorter | Team B | P2-06 | `[ ]` | Enforces non-negativity and prevents quantile crossing |
-| **P2-09** | Feature Attribution & Explainability (SHAP) | Team B | P2-06 | `[ ]` | Emits local and global feature importance attributions |
+| **P2-04** | Monsoon Synoptic Regime Classifier | Team B | P2-03 | `[x]` | Classifies Active, Break, Depression, and Normal states |
+| **P2-05** | Baseline Deterministic Post-Processing Regressor | Team B | P2-04 | `[x]` | Trained LightGBM/XGBoost baseline model |
+| **P2-06** | Quantile Regression Engine (P10, P50, P75, P90, P95) | Team B | P2-05 | `[x]` | Multi-quantile models with pinball loss optimization |
+| **P2-07** | Extreme Rainfall Threshold Classifier | Team B | P2-05 | `[x]` | Predicts probabilities for $\ge 64.5$ mm, $\ge 115.6$ mm, $\ge 204.5$ mm |
+| **P2-08** | Physical Constraints & Monotonicity Sorter | Team B | P2-06 | `[x]` | Enforces non-negativity and prevents quantile crossing |
+| **P2-09** | Feature Attribution & Explainability (SHAP) | Team B | P2-06 | `[x]` | Emits local and global feature importance attributions |
 
 ---
 
@@ -66,12 +66,12 @@
 
 | Task ID | Task Description | Owner | Dependency | Status | Acceptance Criteria |
 | :--- | :--- | :--- | :--- | :---: | :--- |
-| **P3-01** | FastAPI Core Server & Routing Skeleton | Team C | P0-07 | `[ ]` | Server boots with `/health` and OpenAPI docs |
-| **P3-02** | Latest Forecast Retrieval Endpoint | Team C | P3-01, P2-08 | `[ ]` | `/api/v1/forecast/latest` serving validated cycle summary |
-| **P3-03** | Point-Grid Timeseries Endpoint | Team C | P3-01, P2-08 | `[ ]` | `/api/v1/forecast/grid` returning lead-time meteogram data |
-| **P3-04** | District Administrative Forecast Endpoint | Team C | P3-01, P5-02 | `[ ]` | `/api/v1/forecast/districts` returning GeoJSON alerts |
-| **P3-05** | Verification Metrics Endpoint | Team C | P3-01, P7-03 | `[ ]` | `/api/v1/verification/summary` returning RMSE/CSI/CRPS |
-| **P3-06** | Explainability & Attribution Endpoint | Team C | P3-01, P2-09 | `[ ]` | `/api/v1/explainability/summary` serving SHAP values |
+| **P3-01** | FastAPI Core Server & Routing Skeleton | Team C | P0-07 | `[x]` | Server boots with `/health` and OpenAPI docs |
+| **P3-02** | Latest Forecast Retrieval Endpoint | Team C | P3-01, P2-08 | `[x]` | `/api/v1/forecast/latest` serving validated cycle summary |
+| **P3-03** | Point-Grid Timeseries Endpoint | Team C | P3-01, P2-08 | `[x]` | `/api/v1/forecast/grid` returning lead-time meteogram data |
+| **P3-04** | District Administrative Forecast Endpoint | Team C | P3-01, P5-02 | `[x]` | `/api/v1/forecast/districts` returning GeoJSON alerts |
+| **P3-05** | Verification Metrics Endpoint | Team C | P3-01, P7-03 | `[x]` | `/api/v1/verification/summary` returning RMSE/CSI/CRPS |
+| **P3-06** | Explainability & Attribution Endpoint | Team C | P3-01, P2-09 | `[x]` | `/api/v1/explainability/summary` serving SHAP values |
 
 ---
 
@@ -92,9 +92,9 @@
 
 | Task ID | Task Description | Owner | Dependency | Status | Acceptance Criteria |
 | :--- | :--- | :--- | :--- | :---: | :--- |
-| **P5-01** | District Shapefile & GeoJSON Normalization | Team E | P0-05 | `[ ]` | Validated India district polygons in EPSG:4326 |
-| **P5-02** | Spatial Zonal Statistics Engine | Team E | P5-01, P2-08 | `[ ]` | Computes district mean, max, and exceedance probability |
-| **P5-03** | IMD Alert Level Assignment Engine | Team E | P5-02 | `[ ]` | Assigns Green, Yellow, Orange, Red warning codes |
+| **P5-01** | District Shapefile & GeoJSON Normalization | Team E | P0-05 | `[x]` | Validated India district polygons in EPSG:4326 |
+| **P5-02** | Spatial Zonal Statistics Engine | Team E | P5-01, P2-08 | `[x]` | Computes district mean, max, and exceedance probability |
+| **P5-03** | IMD Alert Level Assignment Engine | Team E | P5-02 | `[x]` | Assigns Green, Yellow, Orange, Red warning codes |
 
 ---
 
@@ -112,9 +112,9 @@
 
 | Task ID | Task Description | Owner | Dependency | Status | Acceptance Criteria |
 | :--- | :--- | :--- | :--- | :---: | :--- |
-| **P7-01** | Deterministic Verification Engine (RMSE, MAE, CSI) | Team G | P1-06, P2-08 | `[ ]` | Computes standard meteorological verification metrics |
-| **P7-02** | Probabilistic Verification Engine (CRPS, Brier) | Team G | P2-08 | `[ ]` | Evaluates reliability diagrams and quantile calibration |
-| **P7-03** | End-to-End Pipeline Regression Test | Team G | P1..P5 | `[ ]` | Simulated cycle execution tests from data to API |
+| **P7-01** | Deterministic Verification Engine (RMSE, MAE, CSI) | Team G | P1-06, P2-08 | `[x]` | Computes standard meteorological verification metrics |
+| **P7-02** | Probabilistic Verification Engine (CRPS, Brier) | Team G | P2-08 | `[x]` | Evaluates reliability diagrams and quantile calibration |
+| **P7-03** | End-to-End Pipeline Regression Test | Team G | P1..P5 | `[x]` | Simulated cycle execution tests from data to API |
 
 ---
 

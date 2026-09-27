@@ -1,0 +1,53 @@
+{
+  "model_id": "MOD_REPAIR_CANDIDATE_V2.4.1",
+  "model_name": "RAIN-REPAIR-X-Candidate",
+  "version": "2.4.1",
+  "model_type": "SoftMixtureOfExperts_Quantile_EVT",
+  "dataset_version": "IMD-ERA5-v2.1",
+  "feature_version": "v1.0.0-phys",
+  "calibration_version": "v1.0.0-platt",
+  "evt_version": "v1.0.0-evt-gpd",
+  "training_period": {
+    "start": "2020-06-01",
+    "end": "2024-09-30"
+  },
+  "validation_period": {
+    "start": "2025-06-01",
+    "end": "2025-09-30"
+  },
+  "test_period": {
+    "start": "2026-06-01",
+    "end": "2026-09-30"
+  },
+  "metrics": {
+    "rmse": 15.9,
+    "mae": 9.5,
+    "csi_heavy": 0.46,
+    "crps": 7.2,
+    "brier_score": 0.108
+  },
+  "status": "production",
+  "created_at": "2026-09-27T13:46:14Z",
+  "promoted_at": "2026-09-27T14:58:36Z",
+  "artifact_path": "models/checkpoints/rrx_v2_4_1_cand.joblib",
+  "quality_gate_result": {
+    "gate_passed": true,
+    "status": "PASSED",
+    "checks": {
+      "rmse_within_limit": true,
+      "no_regression_vs_prod": true,
+      "calibration_acceptable": true,
+      "extreme_event_behavior_acceptable": true,
+      "quantile_monotonicity_satisfied": true,
+      "non_negativity_satisfied": true,
+      "regime_wise_acceptable": true
+    },
+    "diagnostics": {
+      "regime_audit": {}
+    },
+    "failure_reasons": [],
+    "warnings": [],
+    "passed": true,
+    "failures": []
+  }
+}

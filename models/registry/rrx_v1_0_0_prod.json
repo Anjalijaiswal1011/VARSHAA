@@ -1,0 +1,34 @@
+{
+  "model_id": "rrx_v1_0_0_prod",
+  "model_name": "RAIN-REPAIR-X-Operational",
+  "version": "1.0.0",
+  "model_type": "SoftMixtureOfExperts_Quantile_EVT",
+  "dataset_version": "IMD-ERA5-v2.1",
+  "feature_version": "v1.0.0-phys",
+  "calibration_version": "v1.0.0-platt",
+  "evt_version": "v1.0.0-evt-gpd",
+  "training_period": {
+    "start": "2020-06-01",
+    "end": "2024-09-30"
+  },
+  "validation_period": {
+    "start": "2025-06-01",
+    "end": "2025-09-30"
+  },
+  "test_period": {
+    "start": "2026-06-01",
+    "end": "2026-09-30"
+  },
+  "metrics": {
+    "rmse": 16.2,
+    "mae": 9.7,
+    "csi_heavy": 0.44,
+    "crps": 7.4,
+    "brier_score": 0.114
+  },
+  "status": "archived",
+  "created_at": "2026-09-27T13:46:14Z",
+  "promoted_at": "2026-09-27T13:46:14Z",
+  "artifact_path": "models/checkpoints/rrx_v1_0_0.joblib",
+  "quality_gate_result": null
+}

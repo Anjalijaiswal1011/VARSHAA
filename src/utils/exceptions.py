@@ -42,6 +42,11 @@ class TemporalAlignmentError(RainRepairError):
     pass
 
 
+class TemporalLeakageError(RainRepairError):
+    """Raised when future observations or post-forecast data leak into feature extraction or memory."""
+    pass
+
+
 class DataQualityError(RainRepairError):
     """Raised when data values exceed physical atmospheric limits or exceed NaN thresholds."""
     pass
