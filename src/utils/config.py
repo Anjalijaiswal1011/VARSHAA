@@ -75,6 +75,23 @@ class ApiConfig:
     )
 
 
+@dataclass(frozen=True)
+class ScheduleConfig:
+    enabled: bool = False
+    interval_minutes: int = 360
+    timezone: str = "UTC"
+    lead_times_hours: List[int] = field(default_factory=lambda: [24, 48, 72, 96, 120])
+
+
+@dataclass(frozen=True)
+class MonitoringConfig:
+    mae_threshold: float = 14.0
+    rmse_threshold: float = 22.0
+    coverage_error_threshold: float = 0.12
+    drift_threshold: float = 0.25
+    missing_data_threshold: float = 0.05
+
+
 @dataclass
 class AppConfig:
     project_name: str = "RAIN-REPAIR X (VARSHAA)"
@@ -86,6 +103,8 @@ class AppConfig:
     temporal: TemporalConfig = field(default_factory=TemporalConfig)
     thresholds: ThresholdsConfig = field(default_factory=ThresholdsConfig)
     api: ApiConfig = field(default_factory=ApiConfig)
+    schedule: ScheduleConfig = field(default_factory=ScheduleConfig)
+    monitoring: MonitoringConfig = field(default_factory=MonitoringConfig)
     regimes: List[str] = field(
         default_factory=lambda: [
             "ACTIVE_MONSOON",
@@ -96,6 +115,7 @@ class AppConfig:
             "NORMAL_TRANSITIONAL",
         ]
     )
+
 
 
 def load_config(config_path: Optional[Path] = None) -> AppConfig:
@@ -166,6 +186,23 @@ def load_config(config_path: Optional[Path] = None) -> AppConfig:
         cors_origins=api_data.get("cors_origins", ["http://localhost:3000", "http://localhost:5173"]),
     )
 
+    sched_data = yaml_data.get("schedule", {})
+    schedule = ScheduleConfig(
+        enabled=bool(os.getenv("SCHEDULE_ENABLED", sched_data.get("enabled", False))),
+        interval_minutes=int(os.getenv("SCHEDULE_INTERVAL_MINUTES", sched_data.get("interval_minutes", 360))),
+        timezone=str(os.getenv("SCHEDULE_TIMEZONE", sched_data.get("timezone", "UTC"))),
+        lead_times_hours=sched_data.get("lead_times_hours", [24, 48, 72, 96, 120]),
+    )
+
+    mon_data = yaml_data.get("monitoring", {})
+    monitoring = MonitoringConfig(
+        mae_threshold=float(os.getenv("MONITORING_MAE_THRESHOLD", mon_data.get("mae_threshold", 14.0))),
+        rmse_threshold=float(os.getenv("MONITORING_RMSE_THRESHOLD", mon_data.get("rmse_threshold", 22.0))),
+        coverage_error_threshold=float(os.getenv("MONITORING_COVERAGE_ERROR_THRESHOLD", mon_data.get("coverage_error_threshold", 0.12))),
+        drift_threshold=float(os.getenv("MONITORING_DRIFT_THRESHOLD", mon_data.get("drift_threshold", 0.25))),
+        missing_data_threshold=float(os.getenv("MONITORING_MISSING_DATA_THRESHOLD", mon_data.get("missing_data_threshold", 0.05))),
+    )
+
     return AppConfig(
         project_name=project_data.get("name", "RAIN-REPAIR X (VARSHAA)"),
         version=project_data.get("version", "1.0.0"),
@@ -176,6 +213,8 @@ def load_config(config_path: Optional[Path] = None) -> AppConfig:
         temporal=temporal,
         thresholds=thresholds,
         api=api,
+        schedule=schedule,
+        monitoring=monitoring,
         regimes=regimes_data or AppConfig().regimes,
     )
 

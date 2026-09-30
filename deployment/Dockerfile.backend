@@ -1,0 +1,72 @@
+# ==============================================================================
+# Multi-Stage Production Dockerfile for VARSHAA (RAIN-REPAIR X) Backend
+# ==============================================================================
+
+# Stage 1: Build & Dependency Wheel Cache
+FROM python:3.11-slim AS builder
+
+WORKDIR /build
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libgeos-dev \
+    libproj-dev \
+    libspatialindex-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements/ /build/requirements/
+COPY requirements.txt /build/
+
+RUN pip install --no-cache-dir --upgrade pip wheel && \
+    pip wheel --no-cache-dir --wheel-dir /build/wheels -r requirements.txt
+
+
+# Stage 2: Minimal Production Runtime
+FROM python:3.11-slim AS runner
+
+WORKDIR /app
+
+# Install essential runtime shared libraries
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgeos-c1v5 \
+    libspatialindex-c6 \
+    libgomp1 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root system user and group
+RUN groupadd -r varshaa && useradd -r -g varshaa -d /app -s /sbin/nologin varshaa
+
+# Copy python pre-built wheels from builder
+COPY --from=builder /build/wheels /wheels
+RUN pip install --no-cache-dir /wheels/* && rm -rf /wheels
+
+# Copy application source code
+COPY backend/ /app/backend/
+COPY src/ /app/src/
+COPY configs/ /app/configs/
+COPY data/ /app/data/
+COPY models/ /app/models/
+
+# Ensure directory permissions for non-root user
+RUN mkdir -p /app/logs /app/scratch /app/data/interim /app/data/processed && \
+    chown -R varshaa:varshaa /app
+
+USER varshaa
+
+# Environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=/app \
+    PORT=8000 \
+    ENV=production
+
+EXPOSE 8000
+
+# Docker Healthcheck
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Production WSGI/ASGI Runner
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]

@@ -27,8 +27,12 @@ BENCHMARK_DISTRICTS: List[Dict[str, Any]] = [
         "district_name": "Pune",
         "state_name": "Maharashtra",
         "meteorological_subdivision": "Madhya Maharashtra",
-        "bbox": [73.30, 18.10, 74.30, 19.10],  # [min_lon, min_lat, max_lon, max_lat]
-        "centroid": [18.5204, 73.8567],        # [lat, lon]
+        "bbox": [73.30, 18.10, 74.30, 19.10],
+        "centroid": [18.5204, 73.8567],
+        "polygon_coords": [
+            [73.35, 18.25], [73.55, 18.12], [73.95, 18.15], [74.28, 18.45],
+            [74.25, 18.85], [73.95, 19.08], [73.60, 19.05], [73.38, 18.70], [73.35, 18.25]
+        ],
     },
     {
         "district_id": "MH_MUMBAI",
@@ -37,6 +41,10 @@ BENCHMARK_DISTRICTS: List[Dict[str, Any]] = [
         "meteorological_subdivision": "Konkan & Goa",
         "bbox": [72.75, 18.88, 73.05, 19.30],
         "centroid": [19.0760, 72.8777],
+        "polygon_coords": [
+            [72.76, 18.89], [72.88, 18.90], [72.95, 19.05], [73.04, 19.22],
+            [72.96, 19.29], [72.82, 19.28], [72.78, 19.12], [72.76, 18.89]
+        ],
     },
     {
         "district_id": "KL_WAYANAD",
@@ -45,6 +53,10 @@ BENCHMARK_DISTRICTS: List[Dict[str, Any]] = [
         "meteorological_subdivision": "Kerala & Mahe",
         "bbox": [75.80, 11.45, 76.45, 11.95],
         "centroid": [11.6854, 76.1320],
+        "polygon_coords": [
+            [75.82, 11.60], [75.95, 11.48], [76.25, 11.46], [76.44, 11.72],
+            [76.38, 11.94], [76.10, 11.93], [75.85, 11.78], [75.82, 11.60]
+        ],
     },
     {
         "district_id": "UK_DEHRADUN",
@@ -53,6 +65,10 @@ BENCHMARK_DISTRICTS: List[Dict[str, Any]] = [
         "meteorological_subdivision": "Uttarakhand",
         "bbox": [77.60, 29.95, 78.35, 30.75],
         "centroid": [30.3165, 78.0322],
+        "polygon_coords": [
+            [77.65, 30.15], [77.90, 29.98], [78.25, 30.10], [78.34, 30.45],
+            [78.18, 30.72], [77.85, 30.74], [77.62, 30.48], [77.65, 30.15]
+        ],
     },
     {
         "district_id": "HP_SHIMLA",
@@ -61,6 +77,10 @@ BENCHMARK_DISTRICTS: List[Dict[str, Any]] = [
         "meteorological_subdivision": "Himachal Pradesh",
         "bbox": [77.00, 30.90, 77.80, 31.50],
         "centroid": [31.1048, 77.1734],
+        "polygon_coords": [
+            [77.02, 31.10], [77.25, 30.92], [77.60, 30.98], [77.78, 31.25],
+            [77.68, 31.48], [77.30, 31.45], [77.05, 31.28], [77.02, 31.10]
+        ],
     },
     {
         "district_id": "OR_PURI",
@@ -69,6 +89,10 @@ BENCHMARK_DISTRICTS: List[Dict[str, Any]] = [
         "meteorological_subdivision": "Odisha",
         "bbox": [85.10, 19.60, 86.10, 20.20],
         "centroid": [19.8135, 85.8312],
+        "polygon_coords": [
+            [85.12, 19.78], [85.45, 19.62], [85.90, 19.70], [86.08, 19.95],
+            [85.92, 20.18], [85.50, 20.12], [85.18, 19.98], [85.12, 19.78]
+        ],
     },
     {
         "district_id": "TN_CHENNAI",
@@ -77,6 +101,10 @@ BENCHMARK_DISTRICTS: List[Dict[str, Any]] = [
         "meteorological_subdivision": "Tamil Nadu, Puducherry & Karaikal",
         "bbox": [80.10, 12.90, 80.35, 13.20],
         "centroid": [13.0827, 80.2707],
+        "polygon_coords": [
+            [80.12, 12.92], [80.28, 12.91], [80.34, 13.05], [80.32, 13.19],
+            [80.20, 13.18], [80.13, 13.08], [80.12, 12.92]
+        ],
     },
     {
         "district_id": "KA_BENGALURU",
@@ -85,6 +113,10 @@ BENCHMARK_DISTRICTS: List[Dict[str, Any]] = [
         "meteorological_subdivision": "South Interior Karnataka",
         "bbox": [77.40, 12.80, 77.80, 13.20],
         "centroid": [12.9716, 77.5946],
+        "polygon_coords": [
+            [77.42, 12.95], [77.58, 12.82], [77.78, 12.88], [77.79, 13.12],
+            [77.65, 13.19], [77.45, 13.12], [77.42, 12.95]
+        ],
     },
     {
         "district_id": "BR_PATNA",
@@ -93,6 +125,10 @@ BENCHMARK_DISTRICTS: List[Dict[str, Any]] = [
         "meteorological_subdivision": "Bihar",
         "bbox": [84.70, 25.20, 85.50, 25.75],
         "centroid": [25.5941, 85.1376],
+        "polygon_coords": [
+            [84.72, 25.42], [85.05, 25.22], [85.45, 25.35], [85.48, 25.68],
+            [85.15, 25.74], [84.78, 25.62], [84.72, 25.42]
+        ],
     },
     {
         "district_id": "AS_GUWAHATI",
@@ -101,6 +137,22 @@ BENCHMARK_DISTRICTS: List[Dict[str, Any]] = [
         "meteorological_subdivision": "Assam & Meghalaya",
         "bbox": [91.50, 26.00, 92.00, 26.35],
         "centroid": [26.1445, 91.7362],
+        "polygon_coords": [
+            [91.52, 26.12], [91.75, 26.02], [91.98, 26.15], [91.95, 26.34],
+            [91.70, 26.32], [91.55, 26.25], [91.52, 26.12]
+        ],
+    },
+    {
+        "district_id": "MP_DHAR",
+        "district_name": "Dhar",
+        "state_name": "Madhya Pradesh",
+        "meteorological_subdivision": "West Madhya Pradesh",
+        "bbox": [74.60, 22.00, 75.85, 23.15],
+        "centroid": [22.5976, 75.3034],
+        "polygon_coords": [
+            [74.65, 22.15], [74.95, 22.02], [75.45, 22.10], [75.80, 22.45],
+            [75.75, 22.95], [75.35, 23.12], [74.80, 23.05], [74.65, 22.60], [74.65, 22.15]
+        ],
     },
 ]
 
@@ -151,16 +203,19 @@ class DistrictGeometryManager:
         """Load benchmark canonical district geometries with computed geodetic areas."""
         self.districts = []
         for d in BENCHMARK_DISTRICTS:
-            bbox = d["bbox"]
-            coords = [
-                [
-                    [bbox[0], bbox[1]],
-                    [bbox[2], bbox[1]],
-                    [bbox[2], bbox[3]],
-                    [bbox[0], bbox[3]],
-                    [bbox[0], bbox[1]],
+            if "polygon_coords" in d:
+                coords = [d["polygon_coords"]]
+            else:
+                bbox = d["bbox"]
+                coords = [
+                    [
+                        [bbox[0], bbox[1]],
+                        [bbox[2], bbox[1]],
+                        [bbox[2], bbox[3]],
+                        [bbox[0], bbox[3]],
+                        [bbox[0], bbox[1]],
+                    ]
                 ]
-            ]
             # Compute geodesic area approximation
             area_km2 = CRSManager.compute_polygon_geodesic_area_km2(coords[0])
 

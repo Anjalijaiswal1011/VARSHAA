@@ -23,19 +23,27 @@ from backend.auth import (
 )
 from backend.cache import cache_manager
 from backend.schemas import (
+    BatchPredictionRequest,
+    BatchPredictionResponseSchema,
+    CanonicalDistrictForecastRecord,
+    CanonicalGridForecastRecord,
     DistrictForecastDetail,
+    DistrictForecastProductResponse,
     DistrictGeoJSONResponse,
     DriftReportResponse,
     ExperimentsListResponse,
     ExplainabilitySummaryResponse,
     ForecastCompareResponse,
     ForecastLatestResponse,
+    GridForecastProductResponse,
     GridPointForecastResponse,
     HealthResponse,
     MapLayersResponse,
     MetadataModelsResponse,
     MetadataRegimesResponse,
     ModelRegistryResponse,
+    PredictionRequest,
+    PredictionResponse,
     ProblemDetails,
     PromoteRequest,
     PromoteResponse,
@@ -43,19 +51,38 @@ from backend.schemas import (
     VerificationSummaryResponse,
 )
 from backend.services import BOUNDARY_DATASET_VERSION, ForecastService
+from src.models.inference_pipeline import (
+    FeatureSchemaMismatchError,
+    InferenceError,
+    InputValidationError,
+    InsufficientHistoryError,
+    ModelIntegrityError,
+    ModelNotFoundError,
+)
 from backend.validation import (
     validate_coordinates,
     validate_district_id,
     validate_iso_date,
     validate_lead_time,
 )
+from src.mlops.alerts import AlertManager
+from src.mlops.data_quality import DataQualityMonitor
 from src.mlops.drift import DriftMonitor
 from src.mlops.experiments import ExperimentTracker
+from src.mlops.health import HealthProbeService
+from src.mlops.pipeline import OperationalPipeline
 from src.mlops.registry import ModelRegistry
 from src.mlops.retraining import RetrainingPipeline
+from src.mlops.scheduler import OperationalScheduler
+from backend.schemas import (
+    AlertResponseSchema,
+    ComprehensiveHealthResponse,
+    PipelineTriggerRequest,
+)
 from src.utils.logging import get_logger
 
 logger = get_logger("rain_repair.backend.routes")
+
 
 router = APIRouter(prefix="/api/v1", tags=["Operational Rainfall Intelligence"])
 
@@ -276,6 +303,23 @@ def get_single_district_forecast(
             message=str(data),
         )
     return data
+
+
+# ---------------------------------------------------------------------------
+# Section 2.5: Continuous Spatial Rainfall Field (GIS Canvas / Raster)
+# ---------------------------------------------------------------------------
+@router.get(
+    "/forecast/rainfall-grid",
+    summary="Continuous Gridded Spatial Rainfall Field",
+    description="Returns high-resolution gridded AI post-processed rainfall predictions across India for GIS map canvas and raster rendering.",
+)
+def get_spatial_rainfall_grid(
+    lead_time: int = Query(24, description="Forecast lead time in hours (24, 48, 72, 96, 120)"),
+) -> Dict[str, Any]:
+    if lead_time not in [24, 48, 72, 96, 120]:
+        raise HTTPException(status_code=400, detail=f"Unsupported lead time {lead_time}")
+    service = get_service()
+    return service.get_spatial_rainfall_grid(lead_time=lead_time)
 
 
 # ---------------------------------------------------------------------------
@@ -543,3 +587,359 @@ def trigger_retraining_evaluation(
         triggered_by=current_user.username,
     )
     return result
+
+
+# ---------------------------------------------------------------------------
+# PHASE 5: Production Inference Pipeline & Model Serving Endpoints
+# ---------------------------------------------------------------------------
+@router.post(
+    "/predictions",
+    response_model=PredictionResponse,
+    responses={
+        200: {"description": "Calibrated probabilistic rainfall prediction."},
+        400: {"model": ProblemDetails, "description": "Invalid input or domain bounds violation."},
+        422: {"model": ProblemDetails, "description": "Insufficient required historical data."},
+        503: {"model": ProblemDetails, "description": "Target model artifact unavailable."},
+        500: {"model": ProblemDetails, "description": "Inference pipeline execution error."},
+    },
+    summary="Production Rainfall Quantile Inference (RAAP-X)",
+    description=(
+        "Executes the full calibrated inference pipeline: "
+        "Input Validation -> Normalization -> Feature Generation -> Zero-Leakage Error Memory -> "
+        "Regime Classification -> RAAP-X Quantile Prediction (P50/P75/P90) -> "
+        "Monotonicity / Non-Negativity Verification -> Validated Prediction Record."
+    ),
+)
+def predict_rainfall(
+    payload: PredictionRequest,
+) -> Any:
+    service = get_service()
+    try:
+        req_dict = payload.model_dump(exclude_unset=True)
+        pred_record = service.run_prediction(
+            request_dict=req_dict,
+            model_id=payload.model_id,
+            require_full_history=payload.require_full_history,
+        )
+        return pred_record.model_dump()
+    except InputValidationError as exc:
+        return create_rfc7807_error(400, exc.error_code, exc.message)
+    except InsufficientHistoryError as exc:
+        return create_rfc7807_error(422, exc.error_code, exc.message)
+    except ModelNotFoundError as exc:
+        return create_rfc7807_error(503, exc.error_code, exc.message)
+    except ModelIntegrityError as exc:
+        return create_rfc7807_error(500, exc.error_code, exc.message)
+    except FeatureSchemaMismatchError as exc:
+        return create_rfc7807_error(500, exc.error_code, exc.message)
+    except Exception as exc:
+        logger.error("Unhandled inference error: %s", exc)
+        return create_rfc7807_error(500, "INFERENCE_FAILURE", "An internal error occurred during prediction.")
+
+
+@router.post(
+    "/predictions/batch",
+    response_model=BatchPredictionResponseSchema,
+    responses={
+        200: {"description": "Batch predictions completed with isolated record results."},
+        400: {"model": ProblemDetails, "description": "Batch request schema invalid."},
+        503: {"model": ProblemDetails, "description": "Target model artifact unavailable."},
+        500: {"model": ProblemDetails, "description": "Batch processing error."},
+    },
+    summary="Batch Production Rainfall Inference",
+    description="Processes multiple weather states in batch with fault isolation across records.",
+)
+def predict_rainfall_batch(
+    payload: BatchPredictionRequest,
+) -> Any:
+    service = get_service()
+    try:
+        batch_dict = payload.model_dump(exclude_unset=True)
+        batch_resp = service.run_batch_prediction(batch_dict=batch_dict)
+        return batch_resp.model_dump()
+    except ModelNotFoundError as exc:
+        return create_rfc7807_error(503, exc.error_code, exc.message)
+    except Exception as exc:
+        logger.error("Unhandled batch inference error: %s", exc)
+        return create_rfc7807_error(500, "BATCH_INFERENCE_FAILURE", "An internal error occurred during batch processing.")
+
+
+# ---------------------------------------------------------------------------
+# PHASE 7: MLOps Orchestration, Verification & Monitoring Endpoints
+# ---------------------------------------------------------------------------
+@router.get(
+    "/health/detailed",
+    response_model=ComprehensiveHealthResponse,
+    summary="9-Subsystem Diagnostic Health Probes",
+    description="Probes data source, model registry, checkpoints, feature pipeline, regime model, quantile models, GIS boundaries, storage, and database.",
+)
+def get_detailed_health() -> ComprehensiveHealthResponse:
+    probe_service = HealthProbeService()
+    report = probe_service.run_comprehensive_health_check()
+    return ComprehensiveHealthResponse(
+        status="healthy" if report.overall_status == "HEALTHY" else report.overall_status.lower(),
+        overall_status=report.overall_status,
+        version=report.version,
+        timestamp=report.timestamp,
+        checks_total=report.checks_total,
+        checks_passed=report.checks_passed,
+        checks_failed=report.checks_failed,
+        components={k: v.to_dict() for k, v in report.components.items()},
+    )
+
+
+@router.post(
+    "/mlops/pipeline/trigger",
+    summary="Trigger Operational 11-Stage ML Pipeline",
+    description="Executes idempotent operational pipeline: Ingestion -> QC -> Alignment -> Features -> Regime -> Quantiles -> Calibration -> Grid -> District -> Validation -> Publish -> Monitor.",
+)
+def trigger_operational_pipeline(
+    payload: PipelineTriggerRequest,
+) -> Dict[str, Any]:
+    pipeline = OperationalPipeline.get_default_pipeline()
+    try:
+        job = pipeline.execute_cycle(
+            cycle_date=payload.cycle_date,
+            lead_time_hours=payload.lead_time_hours,
+            source=payload.source,
+            force_rerun=payload.force_rerun,
+        )
+        return job.to_dict()
+    except Exception as e:
+        logger.error("Operational pipeline trigger error: %s", e)
+        return create_rfc7807_error(500, "PIPELINE_EXECUTION_FAILURE", str(e))
+
+
+@router.get(
+    "/mlops/runs",
+    summary="List Operational Pipeline Execution Runs",
+    description="Returns chronological audit log of all operational pipeline runs, statuses, and performance indicators.",
+)
+def list_pipeline_runs(
+    limit: int = Query(50, description="Maximum number of historical runs to retrieve"),
+) -> List[Dict[str, Any]]:
+    pipeline = OperationalPipeline.get_default_pipeline()
+    runs = pipeline.list_jobs(limit=limit)
+    return [r.to_dict() for r in runs]
+
+
+@router.get(
+    "/mlops/runs/{job_id}",
+    summary="Get Pipeline Run Audit Trail & Lineage",
+    description="Returns full machine-readable stage execution records, inputs, outputs, verification report, and data lineage for a specific run.",
+)
+def get_pipeline_run(
+    job_id: str,
+) -> Any:
+    pipeline = OperationalPipeline.get_default_pipeline()
+    job = pipeline.get_job(job_id)
+    if not job:
+        return create_rfc7807_error(404, "RUN_NOT_FOUND", f"Pipeline run '{job_id}' not found in registry.")
+    return job.to_dict()
+
+
+@router.get(
+    "/mlops/alerts",
+    response_model=List[AlertResponseSchema],
+    summary="Query Operational Telemetry Alerts",
+    description="Lists active and historical operational alerts filterable by severity, category, and resolution status.",
+)
+def list_operational_alerts(
+    severity: Optional[str] = Query(None, description="Filter by severity: INFO, WARNING, CRITICAL"),
+    category: Optional[str] = Query(None, description="Filter by category: DATA_MISSING, FEATURE_DRIFT, etc."),
+    resolved: Optional[bool] = Query(None, description="Filter by resolution status"),
+    limit: int = Query(100, description="Max alerts to return"),
+) -> List[AlertResponseSchema]:
+    manager = AlertManager.get_default_manager()
+    alerts = manager.list_alerts(severity=severity, category=category, resolved=resolved, limit=limit)
+    return [
+        AlertResponseSchema(
+            alert_id=a.alert_id,
+            timestamp=a.timestamp,
+            severity=a.severity,
+            category=a.category,
+            message=a.message,
+            pipeline_run_id=a.pipeline_run_id,
+            dataset_version=a.dataset_version,
+            model_version=a.model_version,
+            recommended_action=a.recommended_action,
+            resolved=a.resolved,
+        )
+        for a in alerts
+    ]
+
+
+@router.get(
+    "/mlops/models",
+    summary="Model Registry Lifecycle Inventory",
+    description="Lists all registered models with their formal lifecycle states (TRAINED, VALIDATED, CANDIDATE, PRODUCTION, RETIRED, FAILED).",
+)
+def list_registry_models(
+    status_filter: Optional[str] = Query(None, description="Filter by lifecycle status"),
+) -> List[Dict[str, Any]]:
+    registry = ModelRegistry.get_default_registry()
+    models = registry.list_models(status_filter=status_filter)
+    return [m.to_dict() for m in models]
+
+
+@router.get(
+    "/mlops/data-quality",
+    summary="Latest Data Quality Audit Report",
+    description="Returns the most recent 4-dimensional data quality audit report (completeness, validity, timeliness, spatial).",
+)
+def get_latest_data_quality() -> Any:
+    monitor = DataQualityMonitor()
+    report = monitor.get_latest_report()
+    if not report:
+        return {"status": "no_reports_available", "message": "No data quality reports recorded yet."}
+    return report.to_dict()
+
+
+@router.get(
+    "/mlops/verification/{job_id}",
+    summary="Get Automated Verification Report for Pipeline Run",
+    description="Returns the detailed automated verification report and publication gating status for a run.",
+)
+def get_verification_report(
+    job_id: str,
+) -> Any:
+    pipeline = OperationalPipeline.get_default_pipeline()
+    job = pipeline.get_job(job_id)
+    if not job:
+        return create_rfc7807_error(404, "RUN_NOT_FOUND", f"Pipeline run '{job_id}' not found.")
+    if not job.validation_report:
+        return create_rfc7807_error(404, "VERIFICATION_NOT_FOUND", f"Run '{job_id}' has no verification report.")
+    return job.validation_report
+
+
+@router.get(
+    "/mlops/scheduler/status",
+    summary="Operational Pipeline Scheduler Telemetry",
+    description="Returns scheduler status, interval, next scheduled run, and total completed runs.",
+)
+def get_scheduler_status() -> Dict[str, Any]:
+    scheduler = OperationalScheduler.get_default_scheduler()
+    return scheduler.get_status().to_dict()
+
+
+# ---------------------------------------------------------------------------
+# PHASE 8: Canonical Forecast Product Endpoints (Sections 4, 5, 6)
+# ---------------------------------------------------------------------------
+@router.get(
+    "/forecasts/grid",
+    response_model=GridForecastProductResponse,
+    responses={
+        200: {"description": "Validated grid forecast product records returned successfully."},
+        400: {"model": ProblemDetails, "description": "Invalid query parameters or coordinates."},
+        422: {"model": ProblemDetails, "description": "Request validation error."},
+    },
+    summary="Canonical Grid Forecast Product API",
+    description="Returns validated grid predictions filtered by lead time, bounding box, spatial proximity, or grid ID with pagination and uncertainty preservation.",
+)
+def get_product_grid_forecasts(
+    lead_time: int = Query(24, description="Forecast lead time in hours (24, 48, 72, 96, 120)"),
+    forecast_time: Optional[str] = Query(None, description="Optional forecast initialization/cycle date (YYYY-MM-DD)"),
+    min_lat: Optional[float] = Query(None, description="South bounding box latitude in WGS84 [6.0, 38.5]"),
+    max_lat: Optional[float] = Query(None, description="North bounding box latitude in WGS84 [6.0, 38.5]"),
+    min_lon: Optional[float] = Query(None, description="West bounding box longitude in WGS84 [68.0, 98.0]"),
+    max_lon: Optional[float] = Query(None, description="East bounding box longitude in WGS84 [68.0, 98.0]"),
+    latitude: Optional[float] = Query(None, description="Query point latitude coordinate in WGS84"),
+    longitude: Optional[float] = Query(None, description="Query point longitude coordinate in WGS84"),
+    radius_km: Optional[float] = Query(None, description="Search radius in kilometers around query point"),
+    grid_id: Optional[str] = Query(None, description="Specific grid point identifier (e.g. 'G_18.50_73.75')"),
+    limit: int = Query(50, ge=1, le=1000, description="Pagination page limit"),
+    offset: int = Query(0, ge=0, description="Pagination offset"),
+):
+    service = get_service()
+    success, result = service.get_product_grid_forecasts(
+        lead_time=lead_time,
+        forecast_time=forecast_time,
+        min_lat=min_lat,
+        max_lat=max_lat,
+        min_lon=min_lon,
+        max_lon=max_lon,
+        latitude=latitude,
+        longitude=longitude,
+        radius_km=radius_km,
+        grid_id=grid_id,
+        limit=limit,
+        offset=offset,
+    )
+    if not success:
+        return create_rfc7807_error(
+            status_code=400,
+            error_code="INVALID_FORECAST_PARAMETERS",
+            message=str(result),
+        )
+    return result
+
+
+@router.get(
+    "/forecasts/districts",
+    response_model=DistrictForecastProductResponse,
+    responses={
+        200: {"description": "District administrative forecast product records returned successfully."},
+        400: {"model": ProblemDetails, "description": "Invalid query parameters or unsupported lead time."},
+    },
+    summary="Canonical District Forecast Product API",
+    description="Returns validated district-level forecasts aggregated from high-resolution grids using IMD-LGD-2026.1 boundaries with uncertainty preservation.",
+)
+def get_product_district_forecasts(
+    lead_time: int = Query(24, description="Forecast lead time in hours (24, 48, 72, 96, 120)"),
+    forecast_time: Optional[str] = Query(None, description="Optional forecast initialization/cycle date (YYYY-MM-DD)"),
+    district_id: Optional[str] = Query(None, description="Optional district administrative identifier (e.g. 'MH_PUNE')"),
+    state: Optional[str] = Query(None, description="Optional state or union territory name filter"),
+    limit: int = Query(50, ge=1, le=1000, description="Pagination limit"),
+    offset: int = Query(0, ge=0, description="Pagination offset"),
+):
+    service = get_service()
+    success, result = service.get_product_district_forecasts(
+        lead_time=lead_time,
+        forecast_time=forecast_time,
+        district_id=district_id,
+        state=state,
+        limit=limit,
+        offset=offset,
+    )
+    if not success:
+        return create_rfc7807_error(
+            status_code=400,
+            error_code="INVALID_FORECAST_PARAMETERS",
+            message=str(result),
+        )
+    return result
+
+
+@router.get(
+    "/forecasts/districts/{district_id}",
+    response_model=CanonicalDistrictForecastRecord,
+    responses={
+        200: {"description": "Single district forecast product returned successfully."},
+        400: {"model": ProblemDetails, "description": "Invalid parameters."},
+        404: {"model": ProblemDetails, "description": "District not found or forecast unavailable."},
+    },
+    summary="Single District Forecast Product API",
+    description="Returns the latest valid forecast product for a specific district, including explanation metadata, uncertainty quantiles, and full version lineage.",
+)
+def get_product_single_district_forecast(
+    district_id: str,
+    lead_time: int = Query(24, description="Forecast lead time in hours (24, 48, 72, 96, 120)"),
+    forecast_time: Optional[str] = Query(None, description="Optional forecast cycle date (YYYY-MM-DD)"),
+):
+    service = get_service()
+    success, error_code, result = service.get_product_single_district_forecast(
+        district_id=district_id,
+        lead_time=lead_time,
+        forecast_time=forecast_time,
+    )
+    if not success:
+        status_code = 404 if error_code in ["DISTRICT_NOT_FOUND", "FORECAST_UNAVAILABLE"] else 400
+        return create_rfc7807_error(
+            status_code=status_code,
+            error_code=error_code,
+            message=str(result),
+        )
+    return result
+
+
+

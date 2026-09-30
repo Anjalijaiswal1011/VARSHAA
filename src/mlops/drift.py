@@ -1,18 +1,20 @@
 """
-Data Drift, Concept Drift & Memory Integrity Monitoring Engine for RAIN-REPAIR X (PART 10).
+Data Drift, Regime Drift & Concept Drift Monitoring Engine for RAAP-X (Phase 7 Section 8 & 9).
 Implements Population Stability Index (PSI), Kolmogorov-Smirnov (KS) tests,
-error memory availability tracking, and analog similarity monitoring.
+synoptic weather regime drift tracking, and error memory integrity monitoring.
 """
 
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 import numpy as np
 import pandas as pd
 from scipy import stats
 
+from src.mlops.alerts import AlertManager
 from src.utils.logging import get_logger
 
 logger = get_logger("rain_repair.mlops.drift")
@@ -25,6 +27,42 @@ MonitoringState = Literal[
     "CALIBRATION_DEGRADED",
     "MODEL_UNAVAILABLE",
     "INSUFFICIENT_DATA",
+]
+
+# Canonical features monitored for statistical drift (Phase 7 Section 8)
+TRACKED_DRIFT_FEATURES = [
+    "nwp_precip",
+    "raw_nwp_rainfall",
+    "nwp_t2m",
+    "t2m",
+    "nwp_q2m",
+    "q2m",
+    "nwp_mslp",
+    "mslp",
+    "cape",
+    "moisture_flux_conv",
+    "error_lag_1d",
+    "error_lag_3d",
+    "rolling_bias_7d",
+]
+
+# Canonical 6 synoptic weather regimes (Phase 7 Section 9)
+CANONICAL_REGIMES = [
+    "ACTIVE_MONSOON",
+    "BREAK_MONSOON",
+    "MONSOON_DEPRESSION",
+    "WESTERN_DISTURBANCE",
+    "OFFSHORE_TROUGH",
+    "NORMAL_TRANSITIONAL",
+]
+
+REGIME_PROB_COLS = [
+    "prob_active_monsoon",
+    "prob_break_monsoon",
+    "prob_monsoon_depression",
+    "prob_western_disturbance",
+    "prob_offshore_trough",
+    "prob_normal_transitional",
 ]
 
 
@@ -61,6 +99,8 @@ class DriftReport:
     analog_memory_health: Dict[str, Any]
     action_required: bool
     recommended_action: str
+    regime_drift_summary: Optional[Dict[str, Any]] = None
+    alerts_triggered: List[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -69,7 +109,7 @@ class DriftReport:
 class DriftMonitor:
     """
     Comprehensive Monitoring Service tracking statistical data drift,
-    concept drift in verified forecasts, and error/analog memory health.
+    regime probability distribution shifts, concept drift, and error memory health.
     """
 
     _default_instance: Optional[DriftMonitor] = None
@@ -79,12 +119,16 @@ class DriftMonitor:
         psi_warning_threshold: float = 0.10,
         psi_drift_threshold: float = 0.25,
         perf_regression_tolerance_pct: float = 15.0,
+        regime_drift_threshold: float = 0.25,
         baseline_store: Optional[Path] = None,
+        alert_manager: Optional[AlertManager] = None,
     ) -> None:
         self.psi_warning_threshold = psi_warning_threshold
         self.psi_drift_threshold = psi_drift_threshold
         self.perf_regression_tolerance_pct = perf_regression_tolerance_pct
+        self.regime_drift_threshold = regime_drift_threshold
         self.baseline_store = baseline_store
+        self.alert_manager = alert_manager or AlertManager.get_default_manager()
 
     @classmethod
     def get_default_monitor(cls) -> DriftMonitor:
@@ -152,6 +196,89 @@ class DriftMonitor:
                 "current_mean": round(float(np.mean(c_vals)), 2),
             }
         return drift_results
+
+    def check_regime_drift(
+        self,
+        baseline_regimes: Union[pd.DataFrame, pd.Series, List[str]],
+        current_regimes: Union[pd.DataFrame, pd.Series, List[str]],
+        baseline_probs: Optional[pd.DataFrame] = None,
+        current_probs: Optional[pd.DataFrame] = None,
+    ) -> Dict[str, Any]:
+        """
+        Monitors synoptic regime probability shifts and dominant regime distribution (Phase 7 Section 9).
+        Tracks:
+            - Regime frequency distribution
+            - Average regime probabilities P(Regime_01) ... P(Regime_06)
+            - Dominant regime distribution
+            - Unusual regime concentration
+        """
+        # Convert inputs to series of regime names
+        if isinstance(baseline_regimes, pd.DataFrame):
+            b_series = baseline_regimes["dominant_regime"] if "dominant_regime" in baseline_regimes.columns else baseline_regimes.iloc[:, 0]
+        else:
+            b_series = pd.Series(baseline_regimes)
+
+        if isinstance(current_regimes, pd.DataFrame):
+            c_series = current_regimes["dominant_regime"] if "dominant_regime" in current_regimes.columns else current_regimes.iloc[:, 0]
+        else:
+            c_series = pd.Series(current_regimes)
+
+        # 1. Frequency distributions
+        b_counts = b_series.value_counts(normalize=True).to_dict()
+        c_counts = c_series.value_counts(normalize=True).to_dict()
+
+        # Regime frequencies across all canonical regimes
+        regime_breakdown: Dict[str, Dict[str, float]] = {}
+        eps = 1e-4
+        psi_sum = 0.0
+
+        for r in CANONICAL_REGIMES:
+            b_f = b_counts.get(r, 0.0)
+            c_f = c_counts.get(r, 0.0)
+            # Add small epsilon for categorical PSI computation
+            b_pct = b_f + eps
+            c_pct = c_f + eps
+            psi_sum += (c_pct - b_pct) * np.log(c_pct / b_pct)
+
+            regime_breakdown[r] = {
+                "baseline_frequency": round(float(b_f), 4),
+                "current_frequency": round(float(c_f), 4),
+                "shift": round(float(c_f - b_f), 4),
+            }
+
+        categorical_psi = round(max(0.0, float(psi_sum)), 4)
+
+        # 2. Average probability vectors if provided
+        avg_probs_current: Dict[str, float] = {}
+        if current_probs is not None and not current_probs.empty:
+            for col in current_probs.columns:
+                if col.startswith("prob_") or col in CANONICAL_REGIMES:
+                    avg_probs_current[col] = round(float(current_probs[col].mean()), 4)
+
+        # 3. Check for unusual concentration in single regime
+        max_current_conc = max(c_counts.values()) if c_counts else 0.0
+        dominant_regime = max(c_counts, key=c_counts.get) if c_counts else "UNKNOWN"
+
+        unusual_concentration = bool(max_current_conc >= 0.80)
+        regime_drift_detected = bool(categorical_psi >= self.regime_drift_threshold)
+
+        status = "HEALTHY"
+        if regime_drift_detected or unusual_concentration:
+            status = "DRIFT_DETECTED"
+        elif categorical_psi >= self.psi_warning_threshold:
+            status = "WARNING"
+
+        return {
+            "status": status,
+            "categorical_psi": categorical_psi,
+            "regime_drift_detected": regime_drift_detected,
+            "dominant_regime": dominant_regime,
+            "dominant_concentration": round(float(max_current_conc), 4),
+            "unusual_concentration": unusual_concentration,
+            "regime_breakdown": regime_breakdown,
+            "average_probabilities": avg_probs_current,
+            "drift_threshold": self.regime_drift_threshold,
+        }
 
     def check_performance_drift(
         self,
@@ -245,9 +372,13 @@ class DriftMonitor:
         recent_verified_metrics: Optional[Dict[str, float]] = None,
         error_memory_stats: Optional[Dict[str, Any]] = None,
         analog_memory_stats: Optional[Dict[str, Any]] = None,
+        pipeline_run_id: Optional[str] = None,
+        baseline_regimes: Optional[Union[pd.DataFrame, pd.Series, List[str]]] = None,
+        current_regimes: Optional[Union[pd.DataFrame, pd.Series, List[str]]] = None,
     ) -> DriftReport:
         """
         Assembles holistic operational drift report and determines recommended lifecycle action.
+        Dispatches structured alerts if critical drift is detected.
         """
         np.random.seed(42)
         if baseline_df is None or baseline_df.empty:
@@ -274,7 +405,14 @@ class DriftMonitor:
         em_stats = error_memory_stats or self.check_error_memory_health(100, 2, 3.2)
         am_stats = analog_memory_stats or self.check_analog_memory_health(8, 0.78, 14.5)
 
-        # Synthesize state
+        # Regime drift evaluation
+        regime_drift = None
+        if baseline_regimes is not None and current_regimes is not None:
+            regime_drift = self.check_regime_drift(baseline_regimes, current_regimes)
+
+        alerts_triggered: List[str] = []
+
+        # Synthesize overall monitoring state
         drift_count = sum(1 for d in feat_drift.values() if d["status"] == "DRIFT_DETECTED")
         warning_count = sum(1 for d in feat_drift.values() if d["status"] == "WARNING")
 
@@ -282,10 +420,35 @@ class DriftMonitor:
             state = "PERFORMANCE_DEGRADED"
             action_req = True
             rec_action = "Initiate controlled model retraining and verification against recent observations."
+            alt = self.alert_manager.record_alert(
+                category="MODEL_PERFORMANCE_DEGRADATION",
+                message=f"Performance degradation: RMSE changed by {perf_drift['rmse_change_pct']}%",
+                severity="WARNING",
+                pipeline_run_id=pipeline_run_id,
+            )
+            alerts_triggered.append(alt.alert_id)
         elif drift_count >= 3:
             state = "DRIFT_DETECTED"
             action_req = True
             rec_action = "Severe data drift detected in multiple atmospheric predictors. Schedule retraining evaluation."
+            alt = self.alert_manager.record_alert(
+                category="FEATURE_DRIFT",
+                message=f"Severe feature drift detected in {drift_count} atmospheric predictors.",
+                severity="WARNING",
+                pipeline_run_id=pipeline_run_id,
+            )
+            alerts_triggered.append(alt.alert_id)
+        elif regime_drift and regime_drift.get("regime_drift_detected"):
+            state = "DRIFT_DETECTED"
+            action_req = True
+            rec_action = "Synoptic regime distribution shift detected. Conduct meteorological review."
+            alt = self.alert_manager.record_alert(
+                category="REGIME_DRIFT",
+                message=f"Regime drift detected with categorical PSI {regime_drift.get('categorical_psi')}.",
+                severity="WARNING",
+                pipeline_run_id=pipeline_run_id,
+            )
+            alerts_triggered.append(alt.alert_id)
         elif warning_count >= 2:
             state = "WARNING"
             action_req = False
@@ -305,5 +468,6 @@ class DriftMonitor:
             analog_memory_health=am_stats,
             action_required=action_req,
             recommended_action=rec_action,
+            regime_drift_summary=regime_drift,
+            alerts_triggered=alerts_triggered,
         )
-

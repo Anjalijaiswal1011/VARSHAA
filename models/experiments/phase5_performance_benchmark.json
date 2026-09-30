@@ -1,0 +1,65 @@
+{
+  "benchmark_timestamp": "2026-09-28T09:27:39Z",
+  "cold_start_model_load_ms": 29.69,
+  "warm_cached_model_load_ms": 0.0147,
+  "single_prediction": {
+    "request_size": 1,
+    "total_latency_ms": 2537.28,
+    "feature_generation_ms": 28.28,
+    "regime_inference_ms": 2480.15,
+    "quantile_inference_ms": 14.09,
+    "captured_prediction": {
+      "prediction_id": "PRED-2026071503-2050d779",
+      "forecast_time": "2026-07-15T03:00:00Z",
+      "initialization_time": "2026-07-15T00:00:00Z",
+      "latitude": 18.5,
+      "longitude": 73.75,
+      "lead_time": 24,
+      "raw_nwp_rainfall": 45.2,
+      "corrected_p50": 45.85,
+      "corrected_p75": 50.3,
+      "corrected_p90": 50.56,
+      "spread_p90_p50": 4.71,
+      "regime_probabilities": {
+        "ACTIVE_MONSOON": 0.997,
+        "BREAK_MONSOON": 0.0,
+        "MONSOON_DEPRESSION": 0.0,
+        "COASTAL": 0.0,
+        "OROGRAPHIC": 0.003,
+        "WESTERN_DISTURBANCE": 0.0
+      },
+      "dominant_regime": "ACTIVE_MONSOON",
+      "dominant_probability": 0.997,
+      "model_version": "2.4.1",
+      "regime_model_version": "v1.0.0",
+      "feature_version": "v1.0.0-phys",
+      "dataset_version": "IMD-ERA5-v2.1",
+      "prediction_status": "valid",
+      "diagnostics": {
+        "model_id": "MOD_REPAIR_CANDIDATE_V2.4.1",
+        "memory_status": "COMPLETE_HISTORY",
+        "rearrangement_applied": false,
+        "timings_ms": {
+          "model_load": 0.02,
+          "feature_generation": 28.28,
+          "regime_inference": 2480.15,
+          "quantile_inference": 14.09,
+          "total_latency": 2534.39
+        }
+      },
+      "created_at": "2026-09-28T09:27:36Z"
+    }
+  },
+  "small_batch": {
+    "request_size": 10,
+    "total_latency_ms": 527.32,
+    "latency_per_record_ms": 52.73,
+    "throughput_records_sec": 19.0
+  },
+  "larger_batch": {
+    "request_size": 50,
+    "total_latency_ms": 2524.93,
+    "latency_per_record_ms": 50.5,
+    "throughput_records_sec": 19.8
+  }
+}

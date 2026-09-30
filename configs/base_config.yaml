@@ -55,3 +55,17 @@ api:
     - "http://localhost:5173"
     - "http://127.0.0.1:3000"
     - "http://127.0.0.1:5173"
+
+schedule:
+  enabled: false
+  interval_minutes: 360
+  timezone: "UTC"
+  lead_times_hours: [24, 48, 72, 96, 120]
+
+monitoring:
+  mae_threshold: 14.0
+  rmse_threshold: 22.0
+  coverage_error_threshold: 0.12
+  drift_threshold: 0.25
+  missing_data_threshold: 0.05
+

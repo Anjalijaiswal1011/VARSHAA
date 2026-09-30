@@ -79,12 +79,12 @@
 
 | Task ID | Task Description | Owner | Dependency | Status | Acceptance Criteria |
 | :--- | :--- | :--- | :--- | :---: | :--- |
-| **P4-01** | Frontend Scaffolding (Vite + React / UI Shell) | Team D | P0-05 | `[ ]` | Responsive dashboard shell with dark/light themes |
-| **P4-02** | GIS Map Canvas (Leaflet/MapLibre Integration) | Team D | P4-01 | `[ ]` | Interactive India map with pan/zoom and layer toggling |
-| **P4-03** | Raw vs. AI-Corrected Dual View / Slider | Team D | P4-02, P3-02 | `[ ]` | Visual split-screen comparison of NWP vs. Corrected rain |
-| **P4-04** | District Warning Level Choropleth Overlay | Team D | P4-02, P3-04 | `[ ]` | Color-coded alert overlay (Green/Yellow/Orange/Red) |
-| **P4-05** | Station/Grid Point Meteogram Chart | Team D | P4-01, P3-03 | `[ ]` | Quantile plume chart (P10-P50-P90) over 5 forecast days |
-| **P4-06** | Model Explainability & Regime Attribution Modal | Team D | P4-01, P3-06 | `[ ]` | Visual feature contribution bar charts and active regime tag |
+| **P4-01** | Frontend Scaffolding (Vite + React / UI Shell) | Team D | P0-05 | `[x]` | Responsive dashboard shell with dark/light themes (`frontend/src/App.tsx`) |
+| **P4-02** | GIS Map Canvas (Leaflet/MapLibre Integration) | Team D | P4-01 | `[x]` | Interactive India map with pan/zoom and layer toggling (`IndiaForecastMap.tsx`) |
+| **P4-03** | Raw vs. AI-Corrected Dual View / Slider | Team D | P4-02, P3-02 | `[x]` | Visual split-screen comparison of NWP vs. Corrected rain (`NwpVsRaapxChart.tsx`) |
+| **P4-04** | District Warning Level Choropleth Overlay | Team D | P4-02, P3-04 | `[x]` | Color-coded alert overlay (Green/Yellow/Orange/Red) (`DistrictDetailPanel.tsx`) |
+| **P4-05** | Station/Grid Point Meteogram Chart | Team D | P4-01, P3-03 | `[x]` | Quantile plume chart (P10-P50-P90) over 5 forecast days (`LeadTimeBarChart.tsx`) |
+| **P4-06** | Model Explainability & Regime Attribution Modal | Team D | P4-01, P3-06 | `[x]` | Visual feature contribution bar charts and active regime tag (`ExplainabilityPanel.tsx`, `WhyRaapxStoryFlow.tsx`) |
 
 ---
 
@@ -102,9 +102,9 @@
 
 | Task ID | Task Description | Owner | Dependency | Status | Acceptance Criteria |
 | :--- | :--- | :--- | :--- | :---: | :--- |
-| **P6-01** | GitHub Actions Automated Lint & Test Workflow | Team F | P0-12 | `[ ]` | Pull requests automatically execute pytest & ruff |
-| **P6-02** | Multi-Stage Backend Dockerfile | Team F | P3-01 | `[ ]` | Containerized FastAPI backend $< 500\text{ MB}$ |
-| **P6-03** | Docker Compose Full Monorepo Orchestration | Team F | P6-02, P4-01 | `[ ]` | Single command `docker-compose up` launches entire stack |
+| **P6-01** | GitHub Actions Automated Lint & Test Workflow | Team F | P0-12 | `[x]` | Pull requests automatically execute pytest & ruff (`.github/workflows/ci.yml`) |
+| **P6-02** | Multi-Stage Backend Dockerfile | Team F | P3-01 | `[x]` | Containerized FastAPI backend $< 500\text{ MB}$ (`deployment/Dockerfile.backend`) |
+| **P6-03** | Docker Compose Full Monorepo Orchestration | Team F | P6-02, P4-01 | `[x]` | Single command `docker-compose up` launches entire stack (`docker-compose.yml`) |
 
 ---
 
@@ -122,8 +122,8 @@
 
 | Task ID | Task Description | Owner | Dependency | Status | Acceptance Criteria |
 | :--- | :--- | :--- | :--- | :---: | :--- |
-| **P8-01** | Cloud VM / Server Provisioning & Storage Mount | Team F | P6-03 | `[ ]` | Host environment configured with persistent storage |
-| **P8-02** | Reverse Proxy & SSL Setup (Nginx / Caddy) | Team F | P8-01 | `[ ]` | Secure HTTPS endpoints with domain name routing |
+| **P8-01** | Cloud VM / Server Provisioning & Storage Mount | Team F | P6-03 | `[x]` | Host environment configured with persistent storage (`docs/deployment/cloud-provisioning.md`) |
+| **P8-02** | Reverse Proxy & SSL Setup (Nginx / Caddy) | Team F | P8-01 | `[x]` | Secure HTTPS endpoints with domain name routing (`deployment/nginx-ssl.conf`, `docs/deployment/ssl-reverse-proxy.md`) |
 
 ---
 
@@ -131,5 +131,5 @@
 
 | Task ID | Task Description | Owner | Dependency | Status | Acceptance Criteria |
 | :--- | :--- | :--- | :--- | :---: | :--- |
-| **P9-01** | High-Impact Demonstration Case Studies (e.g. Floods) | All Teams | P1..P7 | `[ ]` | Documented case studies showing AI improvement |
-| **P9-02** | Pitch Presentation Deck & Live Demo Script | Tech Lead | All Teams | `[ ]` | Ready for judges with live operational walkthrough |
+| **P9-01** | High-Impact Demonstration Case Studies (e.g. Floods) | All Teams | P1..P7 | `[x]` | Documented case studies showing AI improvement (`docs/case_studies/floods_and_extreme_weather.md`) |
+| **P9-02** | Pitch Presentation Deck & Live Demo Script | Tech Lead | All Teams | `[x]` | Ready for judges with live operational walkthrough (`docs/presentation/SIH_FINAL_PITCH_DECK.md`, `LIVE_DEMO_SCRIPT.md`, `docs/slides/sih_presentation_deck.html`) |

@@ -67,16 +67,50 @@ Numerical Weather Prediction (NWP) forecasts (IMD GFS, NCMRWF NCUM, ECMWF) often
 
 ---
 
-## 3. Quick Links
+## 3. Operational Quickstart & Run Instructions
+
+### A. Run Backend API & Integrated Dashboard
+The production FastAPI gateway serves both the REST endpoints and the pre-built Soft Sky UI dashboard:
+```bash
+python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
+```
+* **Operational Dashboard**: [http://localhost:8000/dashboard](http://localhost:8000/dashboard)
+* **Interactive API Documentation**: [http://localhost:8000/docs](http://localhost:8000/docs)
+* **System Health Diagnostics**: [http://localhost:8000/api/v1/health/detailed](http://localhost:8000/api/v1/health/detailed)
+
+### B. Run Frontend in Development Mode
+To develop or hot-reload the React/Vite application:
+```bash
+cd frontend
+npm install
+npm run dev
+```
+Dashboard dev server will start at `http://localhost:5173` with automatic API proxying to port 8000.
+
+### C. Run Test Suite
+Execute the full test suite (213 passing tests across unit, integration, MLOps, GIS, and frontend contracts):
+```bash
+pytest tests/ -v
+```
+
+### D. Trigger Operational MLOps Pipeline
+To trigger the automated 11-stage pipeline (Ingestion → Features → Regime → Quantiles → Calibration → GIS → Validation → Publish):
+```bash
+curl -X POST http://localhost:8000/api/v1/mlops/pipeline/trigger \
+     -H "Content-Type: application/json" \
+     -d '{"cycle_date": "2026-07-15", "lead_time_hours": 24}'
+```
+
+---
+
+## 4. Key References & Documentation
 
 - [System Requirements Specification](REQUIREMENTS.md)
 - [System Boundary Definition](SYSTEM_BOUNDARY.md)
 - [Master System Architecture](docs/architecture/system-architecture.md)
-- [Team Work Responsibilities](docs/team-responsibilities.md)
 - [Interface Contracts](docs/contracts/)
   - [Data Contract](docs/contracts/data-contract.md)
   - [ML Contract](docs/contracts/ml-contract.md)
   - [API Contract](docs/contracts/api-contract.md)
 - [Developer Setup & Onboarding Guide](DEVELOPER_SETUP.md)
-- [Master Roadmap & Task Board](MASTER_TODO.md)
 - [Contributing Guidelines & Standards](CONTRIBUTING.md)

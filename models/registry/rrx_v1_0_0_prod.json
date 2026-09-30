@@ -27,8 +27,84 @@
     "brier_score": 0.114
   },
   "status": "archived",
-  "created_at": "2026-09-27T13:46:14Z",
-  "promoted_at": "2026-09-27T13:46:14Z",
+  "created_at": "2026-09-28T08:32:02Z",
+  "promoted_at": "2026-09-28T08:32:02Z",
   "artifact_path": "models/checkpoints/rrx_v1_0_0.joblib",
-  "quality_gate_result": null
+  "quality_gate_result": null,
+  "checksum": "0fd48ea0771d73bef4d9848bfd79103ba4228bb645bb75b1debbfff4d0453103",
+  "regime_model_version": "v1.0.0",
+  "quantiles": [
+    0.5,
+    0.75,
+    0.9
+  ],
+  "components": {
+    "REGIME_CLASSIFIER": {
+      "name": "LightGBMRegimeClassifier",
+      "version": "v1.0.0",
+      "classes": [
+        "ACTIVE_MONSOON",
+        "BREAK_MONSOON",
+        "MONSOON_DEPRESSION",
+        "COASTAL",
+        "OROGRAPHIC",
+        "WESTERN_DISTURBANCE"
+      ],
+      "feature_count": 11
+    },
+    "QUANTILE_P50": {
+      "quantile": 0.5,
+      "loss": "pinball",
+      "target": "median_precipitation"
+    },
+    "QUANTILE_P75": {
+      "quantile": 0.75,
+      "loss": "pinball",
+      "target": "upper_quartile_precipitation"
+    },
+    "QUANTILE_P90": {
+      "quantile": 0.9,
+      "loss": "pinball",
+      "target": "heavy_risk_precipitation"
+    },
+    "CALIBRATION_MODEL": {
+      "method": "ChernozhukovRearrangement",
+      "version": "v1.0.0-platt"
+    }
+  },
+  "feature_schema": [
+    "nwp_precip",
+    "nwp_precip_log",
+    "nwp_t2m",
+    "nwp_q2m",
+    "nwp_u10",
+    "nwp_v10",
+    "nwp_wind_speed",
+    "nwp_mslp",
+    "error_lag_1d",
+    "error_lag_3d",
+    "error_lag_7d",
+    "error_lag_14d",
+    "rolling_bias_7d",
+    "rolling_bias_14d",
+    "rolling_mae_7d",
+    "elevation",
+    "slope",
+    "aspect_sin",
+    "aspect_cos",
+    "dist_to_coast",
+    "terrain_roughness",
+    "moisture_flux_conv",
+    "wind_shear_deep",
+    "relative_vorticity",
+    "orographic_uplift",
+    "vapor_pressure_deficit",
+    "cape",
+    "prob_active_monsoon",
+    "prob_break_monsoon",
+    "prob_monsoon_depression",
+    "prob_coastal",
+    "prob_orographic",
+    "prob_western_disturbance"
+  ]
 }

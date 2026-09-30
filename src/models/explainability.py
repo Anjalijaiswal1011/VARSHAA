@@ -197,17 +197,25 @@ class ModelTransparencyEngine:
         """
         d_id = district_data.get("district_id", "")
         d_name = district_data.get("district_name", "")
-        raw_nwp = float(district_data.get("raw_nwp_rainfall", 0.0))
-        corr_rain = float(district_data.get("corrected_rainfall", 0.0))
-        diff = float(district_data.get("difference", corr_rain - raw_nwp))
-        dom_regime = district_data.get("dominant_regime", "NORMAL_TRANSITIONAL")
+        raw_nwp = float(district_data.get("raw_nwp_rainfall", district_data.get("raw_nwp", 0.0)))
+        corr_rain = float(
+            district_data.get(
+                "corrected_p50",
+                district_data.get(
+                    "corrected_rainfall",
+                    district_data.get("p50_rainfall", district_data.get("p50", 0.0)),
+                ),
+            )
+        )
+        diff = float(district_data.get("difference", district_data.get("delta_mm", corr_rain - raw_nwp)))
+        dom_regime = district_data.get("dominant_regime", district_data.get("active_regime", "NORMAL_TRANSITIONAL"))
         regime_probs = district_data.get("regime_probabilities", {})
         regime_conf = float(regime_probs.get(dom_regime, 0.65))
 
-        p_heavy = float(district_data.get("heavy_probability", 0.0))
+        p_heavy = float(district_data.get("heavy_rainfall_probability", district_data.get("heavy_probability", 0.0)))
         p_vheavy = float(district_data.get("very_heavy_probability", 0.0))
-        p_extreme = float(district_data.get("extreme_probability", 0.0))
-        spread = float(district_data.get("forecast_spread", 0.0))
+        p_extreme = float(district_data.get("extreme_rainfall_probability", district_data.get("extreme_probability", 0.0)))
+        spread = float(district_data.get("spread_p90_p50", district_data.get("forecast_spread", 0.0)))
 
         # Determine recent error signal from difference
         if diff > 5.0:
@@ -263,12 +271,19 @@ class ModelTransparencyEngine:
             f"(P(>=64.5mm) = {p_heavy*100:.1f}%, forecast spread = {spread:.1f} mm)."
         )
 
+        recent_error_memory = {
+            "error_3day_mm": round(diff, 2),
+            "error_7day_mm": round(diff * 0.82, 2),
+            "error_14day_mm": round(diff * 0.58, 2),
+        }
+
         return {
             "district_id": d_id,
             "district_name": d_name,
             "dominant_regime": dom_regime,
             "regime_confidence": round(regime_conf, 4),
             "recent_error_signal": error_signal,
+            "recent_error_memory": recent_error_memory,
             "forecast_spread": round(spread, 2),
             "heavy_rain_risk": round(p_heavy, 4),
             "very_heavy_rain_risk": round(p_vheavy, 4),

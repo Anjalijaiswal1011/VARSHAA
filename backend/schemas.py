@@ -360,3 +360,279 @@ class PromoteResponse(BaseModel):
 class RollbackResponse(BaseModel):
     status: str
     message: str
+
+
+# ---------------------------------------------------------------------------
+# PHASE 5: Production Inference Pipeline & Model Serving Schemas
+# ---------------------------------------------------------------------------
+class PredictionRequest(BaseModel):
+    """Production single forecast prediction request."""
+    forecast_time: str = Field(..., description="Forecast valid time in ISO 8601 UTC (e.g. '2026-07-15T03:00:00Z')")
+    initialization_time: str = Field(..., description="Cycle run initialization time in ISO 8601 UTC (e.g. '2026-07-15T00:00:00Z')")
+    latitude: float = Field(..., description="Latitude coordinate in decimal degrees WGS84 [6.0, 38.5]")
+    longitude: float = Field(..., description="Longitude coordinate in decimal degrees WGS84 [68.0, 98.0]")
+    lead_time: int = Field(..., description="Forecast lead time in hours (>= 0)")
+    nwp_precip: float = Field(..., description="Raw NWP accumulated precipitation in mm/24h (>= 0)")
+
+    # Atmospheric & Physical Context Variables
+    t2m: Optional[float] = Field(None, description="2m temperature (Kelvin or Celsius)")
+    q2m: Optional[float] = Field(None, description="2m specific humidity in kg/kg or relative humidity %")
+    u10: Optional[float] = Field(None, description="10m zonal wind velocity in m/s")
+    v10: Optional[float] = Field(None, description="10m meridional wind velocity in m/s")
+    u850: Optional[float] = Field(None, description="850 hPa zonal wind in m/s")
+    v850: Optional[float] = Field(None, description="850 hPa meridional wind in m/s")
+    mslp: Optional[float] = Field(None, description="Mean sea level pressure in hPa")
+    elevation: Optional[float] = Field(None, description="Terrain surface elevation in meters")
+    slope: Optional[float] = Field(None, description="Terrain slope gradient in degrees")
+    aspect_sin: Optional[float] = Field(None, description="Sine of terrain aspect angle")
+    aspect_cos: Optional[float] = Field(None, description="Cosine of terrain aspect angle")
+    dist_to_coast: Optional[float] = Field(None, description="Distance to nearest coastline in km")
+    terrain_roughness: Optional[float] = Field(None, description="Terrain standard deviation roughness index")
+    cape: Optional[float] = Field(None, description="Convective Available Potential Energy in J/kg")
+    relative_vorticity: Optional[float] = Field(None, description="Relative vorticity at 850 hPa")
+    moisture_flux_conv: Optional[float] = Field(None, description="Moisture flux convergence proxy")
+    wind_shear_deep: Optional[float] = Field(None, description="Deep layer wind shear (850-200 hPa)")
+    orographic_uplift: Optional[float] = Field(None, description="Orographic vertical velocity index")
+    vapor_pressure_deficit: Optional[float] = Field(None, description="Vapor pressure deficit in kPa")
+    grid_id: Optional[str] = Field(None, description="Optional spatial grid identifier")
+
+    model_id: Optional[str] = Field(None, description="Optional target model ID (defaults to active production model)")
+    require_full_history: bool = Field(False, description="Whether to reject predictions when historical error memory is incomplete")
+
+
+class PredictionResponse(BaseModel):
+    """Stable production prediction response."""
+    prediction_id: str = Field(..., description="Unique deterministic or UUID prediction identifier")
+    forecast_time: str = Field(..., description="Forecast valid timestamp ISO 8601 UTC")
+    initialization_time: str = Field(..., description="Cycle initialization timestamp ISO 8601 UTC")
+    latitude: float = Field(..., description="Latitude coordinate")
+    longitude: float = Field(..., description="Longitude coordinate")
+    lead_time: int = Field(..., description="Lead time in hours")
+
+    raw_nwp_rainfall: float = Field(..., description="Input raw NWP rainfall (mm/24h)")
+    corrected_p50: float = Field(..., description="Corrected median precipitation P50 (mm/24h)")
+    corrected_p75: float = Field(..., description="Corrected upper quartile precipitation P75 (mm/24h)")
+    corrected_p90: float = Field(..., description="Corrected extreme risk threshold precipitation P90 (mm/24h)")
+    spread_p90_p50: float = Field(..., description="Probabilistic spread / uncertainty indicator (P90 - P50)")
+
+    regime_probabilities: Dict[str, float] = Field(..., description="Calibrated probability distribution across six synoptic regimes")
+    dominant_regime: str = Field(..., description="Dominant synoptic regime classification")
+    dominant_probability: float = Field(..., description="Probability of dominant regime")
+
+    model_version: str = Field(..., description="Active production model version")
+    regime_model_version: str = Field(..., description="Active regime classifier version")
+    feature_version: str = Field(..., description="Feature pipeline schema version")
+    dataset_version: str = Field(..., description="Dataset lineage version")
+
+    prediction_status: Literal["valid", "calibrated_rearranged", "rejected"] = Field("valid", description="Quality gate status")
+    diagnostics: Dict[str, Any] = Field(default_factory=dict, description="Operational telemetry and execution diagnostics")
+    created_at: str = Field(..., description="Prediction creation timestamp UTC")
+
+
+class BatchPredictionRequest(BaseModel):
+    """Batch prediction request payload."""
+    records: List[Union[PredictionRequest, Dict[str, Any]]] = Field(..., description="List of individual forecast state inputs")
+    model_id: Optional[str] = Field(None, description="Optional target model ID override")
+    require_full_history: bool = Field(False, description="Whether to reject predictions when historical error memory is incomplete")
+
+
+class BatchPredictionResponseSchema(BaseModel):
+    """Batch prediction response schema."""
+    total_records: int
+    successful_count: int
+    failed_count: int
+    predictions: List[PredictionResponse]
+    failed_records: List[Dict[str, Any]]
+    model_id: str
+    model_version: str
+    total_latency_ms: float
+
+
+# ---------------------------------------------------------------------------
+# PHASE 7: MLOps Orchestration, Verification & Monitoring Schemas
+# ---------------------------------------------------------------------------
+class PipelineTriggerRequest(BaseModel):
+    cycle_date: str = Field(..., description="Forecast cycle initialization date YYYY-MM-DD")
+    lead_time_hours: int = Field(24, description="Forecast lead time (24, 48, 72, 96, 120)")
+    force_rerun: bool = Field(False, description="Whether to bypass idempotency cache and generate versioned rerun")
+    source: str = Field("IMD_GFS_OPERATIONAL", description="NWP source model identifier")
+
+
+class AlertResponseSchema(BaseModel):
+    alert_id: str
+    timestamp: str
+    severity: str
+    category: str
+    message: str
+    pipeline_run_id: Optional[str] = None
+    dataset_version: Optional[str] = None
+    model_version: Optional[str] = None
+    recommended_action: str
+    resolved: bool = False
+
+
+class ComprehensiveHealthResponse(BaseModel):
+    status: str
+    overall_status: str
+    version: str
+    timestamp: str
+    checks_total: int
+    checks_passed: int
+    checks_failed: int
+    components: Dict[str, Any]
+
+
+# ---------------------------------------------------------------------------
+# PHASE 8: Canonical Forecast Product Data Models & API Schemas
+# ---------------------------------------------------------------------------
+ForecastProductStatus = Literal["VALID", "PARTIAL", "STALE", "INVALID", "UNAVAILABLE"]
+
+
+class DistrictIdentity(BaseModel):
+    id: str = Field(..., description="Unique district administrative code (e.g. 'MH_PUNE')")
+    name: str = Field(..., description="Official district name")
+    state: Optional[str] = Field(None, description="State or Union Territory name")
+
+
+class RainfallQuantiles(BaseModel):
+    raw_nwp: float = Field(..., description="Uncorrected raw NWP rainfall in mm")
+    p50: float = Field(..., description="Corrected expected / central estimate median P50 in mm")
+    p75: float = Field(..., description="Corrected upper uncertainty estimate P75 in mm")
+    p90: float = Field(..., description="Corrected high uncertainty / peak hotspot estimate P90 in mm")
+    spread: Optional[float] = Field(None, description="Probabilistic spread (P90 - P50) in mm")
+    difference: Optional[float] = Field(None, description="Post-processing delta (P50 - raw NWP) in mm")
+
+
+class RegimeState(BaseModel):
+    dominant: str = Field(..., description="Dominant synoptic meteorological regime identifier")
+    dominant_probability: float = Field(1.0, description="Calibrated confidence of dominant regime [0.0, 1.0]")
+    probabilities: Dict[str, float] = Field(..., description="Probability vector over all 6 canonical regimes summing to ~1.0")
+
+
+class RiskAssessment(BaseModel):
+    heavy_rainfall_probability: float = Field(..., description="Exceedance probability for heavy rainfall (>= 64.5 mm/24h)")
+    extreme_rainfall_probability: float = Field(..., description="Exceedance probability for extreme rainfall (>= 204.5 mm/24h)")
+    warning_level: Optional[str] = Field(None, description="IMD alert tier: GREEN, YELLOW, ORANGE, RED")
+
+
+class ForecastMetadata(BaseModel):
+    model_version: str = Field(..., description="Active production quantile regression model version")
+    regime_model_version: str = Field(..., description="Active regime classification model version")
+    feature_version: str = Field(..., description="Atmospheric feature engineering pipeline version")
+    dataset_version: str = Field(..., description="Training and reference dataset lineage version")
+    boundary_version: str = Field(..., description="Administrative boundary dataset version (e.g. IMD-LGD-2026.1)")
+    pipeline_run_id: Optional[str] = Field(None, description="Orchestration pipeline execution run ID")
+
+
+class PaginationMeta(BaseModel):
+    total_count: int = Field(..., description="Total matching records across whole query domain")
+    limit: int = Field(..., description="Page size limit applied")
+    offset: int = Field(..., description="Offset index applied")
+    has_more: bool = Field(..., description="Whether additional records exist beyond current page")
+
+
+class CanonicalGridForecastRecord(BaseModel):
+    """Canonical grid-level forecast product record conforming to Phase 8 Section 3 & 4."""
+    prediction_id: str = Field(..., description="Unique deterministic prediction record identifier")
+    forecast_time: str = Field(..., description="Valid forecast timestamp ISO 8601 UTC")
+    initialization_time: str = Field(..., description="Cycle run initialization timestamp ISO 8601 UTC")
+    lead_time: int = Field(..., description="Lead time in hours (24, 48, 72, 96, 120)")
+    latitude: float = Field(..., description="Grid cell latitude coordinate in WGS84")
+    longitude: float = Field(..., description="Grid cell longitude coordinate in WGS84")
+    grid_id: Optional[str] = Field(None, description="Spatial grid point identifier")
+    district_id: Optional[str] = Field(None, description="Associated district ID if mapped")
+    district_name: Optional[str] = Field(None, description="Associated district name if mapped")
+
+    raw_nwp_rainfall: float = Field(..., description="Input raw NWP rainfall in mm")
+    corrected_p50: float = Field(..., description="Corrected median precipitation P50 in mm")
+    corrected_p75: float = Field(..., description="Corrected upper quartile precipitation P75 in mm")
+    corrected_p90: float = Field(..., description="Corrected extreme risk threshold precipitation P90 in mm")
+    spread_p90_p50: float = Field(..., description="Probabilistic spread / uncertainty indicator (P90 - P50) in mm")
+
+    regime_probabilities: Dict[str, float] = Field(..., description="Regime probability distribution across canonical regimes")
+    dominant_regime: str = Field(..., description="Dominant synoptic regime classification")
+    dominant_probability: float = Field(..., description="Probability of dominant regime")
+
+    heavy_rainfall_probability: float = Field(..., description="Heavy rainfall exceedance probability")
+    extreme_rainfall_probability: float = Field(..., description="Extreme rainfall exceedance probability")
+
+    model_version: str = Field(..., description="Model version")
+    regime_model_version: str = Field(..., description="Regime model version")
+    feature_version: str = Field(..., description="Feature pipeline version")
+    dataset_version: str = Field(..., description="Dataset lineage version")
+    boundary_version: str = Field(..., description="Boundary version (IMD-LGD-2026.1)")
+    pipeline_run_id: Optional[str] = Field(None, description="Pipeline run ID")
+
+    prediction_status: ForecastProductStatus = Field("VALID", description="Product verification status")
+    created_at: str = Field(..., description="Record generation timestamp ISO 8601 UTC")
+
+    # Structured nested sections conforming to Phase 8 Section 15
+    rainfall: Optional[RainfallQuantiles] = None
+    regime: Optional[RegimeState] = None
+    risk: Optional[RiskAssessment] = None
+    metadata: Optional[ForecastMetadata] = None
+
+
+class GridForecastProductResponse(BaseModel):
+    """Product response payload for GET /api/v1/forecasts/grid."""
+    pagination: PaginationMeta
+    forecast_time: str
+    lead_time: int
+    boundary_version: str
+    model_version: str
+    records: List[CanonicalGridForecastRecord]
+
+
+class CanonicalDistrictForecastRecord(BaseModel):
+    """Canonical district-level forecast product record conforming to Phase 8 Section 3, 5, 6, 15."""
+    district_id: str = Field(..., description="District administrative code (e.g. 'MH_PUNE')")
+    district_name: str = Field(..., description="District official name")
+    state: Optional[str] = Field(None, description="State or Union Territory name")
+    forecast_time: str = Field(..., description="Forecast valid timestamp ISO 8601 UTC")
+    initialization_time: str = Field(..., description="Forecast initialization timestamp ISO 8601 UTC")
+    lead_time: int = Field(..., description="Lead time in hours")
+
+    raw_nwp_rainfall: float = Field(..., description="District spatial mean raw NWP rainfall in mm")
+    corrected_p50: float = Field(..., description="District area-weighted median rainfall P50 in mm")
+    corrected_p75: float = Field(..., description="District area-weighted upper quartile P75 in mm")
+    corrected_p90: float = Field(..., description="District peak hotspot upper quantile P90 in mm")
+    spread_p90_p50: float = Field(..., description="Probabilistic spread / uncertainty indicator (P90 - P50) in mm")
+
+    heavy_rainfall_probability: float = Field(..., description="District area-weighted heavy rainfall probability")
+    extreme_rainfall_probability: float = Field(..., description="District area-weighted extreme rainfall probability")
+
+    dominant_regime: str = Field(..., description="Dominant synoptic regime over district")
+    regime_probabilities: Dict[str, float] = Field(..., description="District area-weighted normalized regime probabilities")
+
+    model_version: str = Field(..., description="Model version")
+    regime_model_version: str = Field(..., description="Regime model version")
+    feature_version: str = Field(..., description="Feature pipeline version")
+    dataset_version: str = Field(..., description="Dataset lineage version")
+    boundary_version: str = Field(..., description="Boundary version (IMD-LGD-2026.1)")
+    pipeline_run_id: Optional[str] = Field(None, description="Pipeline run ID")
+
+    prediction_status: ForecastProductStatus = Field("VALID", description="Product verification status")
+    created_at: str = Field(..., description="Record creation timestamp ISO 8601 UTC")
+
+    # Structured nested representations conforming to Phase 8 Section 15
+    district: Optional[DistrictIdentity] = None
+    rainfall: Optional[RainfallQuantiles] = None
+    regime: Optional[RegimeState] = None
+    risk: Optional[RiskAssessment] = None
+    recent_error_memory: Optional[Dict[str, Any]] = None
+    explanation: Optional[Dict[str, Any]] = None
+    metadata: Optional[ForecastMetadata] = None
+    status: Optional[str] = None
+
+
+class DistrictForecastProductResponse(BaseModel):
+    """Product response payload for GET /api/v1/forecasts/districts."""
+    pagination: PaginationMeta
+    forecast_time: str
+    lead_time: int
+    boundary_version: str
+    model_version: str
+    records: List[CanonicalDistrictForecastRecord]
+
+
+

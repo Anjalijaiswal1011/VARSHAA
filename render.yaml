@@ -1,0 +1,20 @@
+# ==============================================================================
+# Render.com Blueprint Infrastructure-as-Code for VARSHAA (RAIN-REPAIR X)
+# ==============================================================================
+services:
+  - type: web
+    name: varshaa-operational-platform
+    runtime: docker
+    dockerfilePath: deployment/Dockerfile.backend
+    plan: free
+    region: singapore
+    envVars:
+      - key: ENV
+        value: production
+      - key: PORT
+        value: 8000
+      - key: SECRET_KEY
+        generateValue: true
+      - key: LOG_LEVEL
+        value: INFO
+    healthCheckPath: /api/v1/health

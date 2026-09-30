@@ -8,6 +8,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 import json
+import hashlib
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Tuple
 
@@ -22,21 +23,35 @@ from src.utils.logging import get_logger
 
 logger = get_logger("rain_repair.mlops.registry")
 
-ModelStatus = Literal["candidate", "validated", "staging", "production", "rejected", "archived"]
+ModelStatus = Literal[
+    "trained",
+    "validated",
+    "candidate",
+    "staging",
+    "production",
+    "retired",
+    "rejected",
+    "failed",
+    "archived",
+]
 
 STATUS_TRANSITIONS: Dict[str, List[str]] = {
-    "candidate": ["validated", "staging", "production", "rejected"],
-    "validated": ["staging", "production", "rejected"],
-    "staging": ["production", "archived", "rejected"],
-    "production": ["archived", "staging"],
-    "rejected": ["candidate"],
-    "archived": ["staging", "production"],
+    "trained": ["validated", "candidate", "failed"],
+    "candidate": ["validated", "staging", "production", "rejected", "failed"],
+    "validated": ["staging", "production", "retired", "failed", "rejected"],
+    "staging": ["production", "archived", "retired", "rejected", "failed"],
+    "production": ["archived", "retired", "staging", "failed"],
+    "retired": ["staging", "production"],
+    "rejected": ["candidate", "trained"],
+    "failed": ["trained", "candidate"],
+    "archived": ["staging", "production", "retired"],
 }
+
 
 
 @dataclass
 class RegisteredModel:
-    """Standardized Model Registry Package conforming to PART 10 Section 10."""
+    """Standardized Model Registry Package conforming to PART 10 Section 10 & Phase 5."""
     model_id: str
     model_name: str
     version: str
@@ -54,6 +69,34 @@ class RegisteredModel:
     promoted_at: Optional[str] = None
     artifact_path: Optional[str] = None
     quality_gate_result: Optional[Dict[str, Any]] = None
+    checksum: Optional[str] = None
+    regime_model_version: Optional[str] = "v1.0.0"
+    quantiles: Optional[List[float]] = field(default_factory=lambda: [0.50, 0.75, 0.90])
+    components: Optional[Dict[str, Dict[str, Any]]] = None
+    feature_schema: Optional[List[str]] = None
+
+    @staticmethod
+    def compute_checksum(filepath: Union[str, Path]) -> str:
+        """Computes SHA-256 hexadecimal digest for a given artifact file."""
+        p = Path(filepath)
+        if not p.is_file():
+            raise FileNotFoundError(f"Artifact file not found: {p}")
+        sha256 = hashlib.sha256()
+        with open(p, "rb") as f:
+            for chunk in iter(lambda: f.read(65536), b""):
+                sha256.update(chunk)
+        return sha256.hexdigest()
+
+    def verify_checksum(self, base_dir: Optional[Path] = None) -> bool:
+        """Verifies if the artifact exists and matches registered checksum."""
+        if not self.checksum or not self.artifact_path:
+            return True
+        path = Path(self.artifact_path)
+        if not path.is_absolute() and base_dir:
+            path = base_dir / path
+        if not path.exists():
+            return False
+        return self.compute_checksum(path) == self.checksum
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -163,6 +206,11 @@ class ModelRegistry:
         manifest: Optional[Any] = None,
         temporal_split: Optional[Any] = None,
         status: Optional[str] = None,
+        checksum: Optional[str] = None,
+        regime_model_version: Optional[str] = "v1.0.0",
+        quantiles: Optional[List[float]] = None,
+        components: Optional[Dict[str, Dict[str, Any]]] = None,
+        feature_schema: Optional[List[str]] = None,
     ) -> RegisteredModel:
         """Registers a new model package in the registry."""
         model_id = f"{model_name.lower().replace('-', '_')}_{version.replace('.', '_')}"
@@ -200,6 +248,11 @@ class ModelRegistry:
             metrics=metrics,
             status=final_status,
             artifact_path=artifact_path,
+            checksum=checksum,
+            regime_model_version=regime_model_version,
+            quantiles=quantiles or [0.50, 0.75, 0.90],
+            components=components,
+            feature_schema=feature_schema,
         )
         self.models[model_id] = rec
         self._save_model_record(rec)
@@ -252,13 +305,14 @@ class ModelRegistry:
         if not model:
             return False, f"Model '{model_id}' not found in registry.", None
 
-        current_status = model.status
+        norm_target = str(target_status).lower()
+        current_status = model.status.lower()
         allowed_targets = STATUS_TRANSITIONS.get(current_status, [])
-        if target_status not in allowed_targets:
-            return False, f"Invalid state transition: '{current_status}' -> '{target_status}'. Allowed: {allowed_targets}", None
+        if norm_target not in allowed_targets:
+            return False, f"Invalid state transition: '{current_status}' -> '{norm_target}'. Allowed: {allowed_targets}", None
 
         gate_res: Optional[QualityGateResult] = None
-        if target_status in ["validated", "staging", "production"]:
+        if norm_target in ["validated", "staging", "production"]:
             prod_model = self.get_production_model()
             prod_metrics = prod_model.metrics if prod_model else None
 
@@ -269,22 +323,22 @@ class ModelRegistry:
                 target_status=target_status,
             )
 
-            if not gate_res.gate_passed and target_status in ["staging", "production"]:
+            if not gate_res.gate_passed and norm_target in ["staging", "production"]:
                 model.status = "rejected"
                 model.quality_gate_result = gate_res.to_dict()
                 self._save_model_record(model)
                 logger.warning("Promotion rejected for %s: %s", model_id, gate_res.failure_reasons)
                 return False, f"Quality gate failed: {gate_res.failure_reasons}", gate_res
 
-        if target_status == "production":
+        if norm_target == "production":
             current_prod = self.get_production_model()
             if current_prod and current_prod.model_id != model_id:
-                current_prod.status = "archived"
+                current_prod.status = "retired"
                 self._save_model_record(current_prod)
-                logger.info("Archived previous production model: %s", current_prod.model_id)
+                logger.info("Retired previous production model: %s", current_prod.model_id)
             self.production_history.append(model_id)
 
-        model.status = target_status
+        model.status = norm_target
         model.promoted_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         if gate_res:
             model.quality_gate_result = gate_res.to_dict()
@@ -313,7 +367,7 @@ class ModelRegistry:
 
         if not predecessor_id:
             for m in self.models.values():
-                if m.model_id != current_prod.model_id and m.status in ["archived", "staging", "validated"]:
+                if m.model_id != current_prod.model_id and m.status in ["archived", "retired", "staging", "validated"]:
                     predecessor_id = m.model_id
                     break
 

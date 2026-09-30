@@ -119,12 +119,28 @@ def create_app() -> FastAPI:
             },
         )
 
+    # Mount Frontend Dashboard if built
+    from pathlib import Path
+    from starlette.staticfiles import StaticFiles
+    from fastapi.responses import FileResponse
+
+    dist_dir = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+    if dist_dir.exists() and (dist_dir / "index.html").exists():
+        assets_dir = dist_dir / "assets"
+        if assets_dir.exists():
+            app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="frontend_assets")
+
+        @app.get("/dashboard", tags=["Dashboard"])
+        async def serve_dashboard():
+            return FileResponse(str(dist_dir / "index.html"))
+
     @app.get("/", tags=["Root"])
     def root():
         return {
             "name": "RAIN-REPAIR X Production Backend API",
             "version": "1.0.0",
             "documentation": "/docs",
+            "dashboard": "/dashboard",
             "health": "/api/v1/health",
             "gateway_status": "operational",
         }

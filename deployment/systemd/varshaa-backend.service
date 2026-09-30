@@ -1,0 +1,23 @@
+[Unit]
+Description=VARSHAA RAAP-X Operational Rainfall AI Backend
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=varshaa
+Group=varshaa
+WorkingDirectory=/opt/varshaa
+Environment="PYTHONPATH=/opt/varshaa"
+Environment="ENV=production"
+Environment="PORT=8000"
+EnvironmentFile=/etc/varshaa/backend.env
+ExecStart=/opt/varshaa/venv/bin/uvicorn backend.main:app --host 0.0.0.0 --port 8000 --workers 4 --proxy-headers --forwarded-allow-ips='*'
+Restart=always
+RestartSec=5s
+LimitNOFILE=65536
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
