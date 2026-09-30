@@ -86,7 +86,31 @@ body {
   color: var(--text-secondary);
   line-height: 1.5;
   overflow-x: hidden;
+  overflow-y: auto;
+  min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Custom Visible Scrollbars ("Slider" for smooth vertical scrolling) */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #EEF5F9;
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: #90BEE0;
+  border-radius: 8px;
+  border: 2px solid #EEF5F9;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #285A7A;
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #90BEE0 #EEF5F9;
 }
 
 /* ==========================================================================
@@ -97,18 +121,11 @@ body {
 .dashboard-app {
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  max-height: 100vh;
-  overflow: hidden;
+  min-height: 100vh;
+  height: auto;
+  overflow-x: hidden;
+  overflow-y: visible;
   background: linear-gradient(180deg, #EAF6FD 0%, #F8FCFF 40%, #F4F9FD 75%, #E8F1F7 100%);
-}
-
-@media (max-width: 860px) {
-  .dashboard-app {
-    height: auto;
-    max-height: none;
-    overflow-y: auto;
-  }
 }
 
 /* Header */
@@ -327,21 +344,20 @@ body {
 .main-content-layout,
 .dashboard-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 440px;
-  flex: 1;
-  height: calc(100vh - 105px);
-  min-height: 0;
+  grid-template-columns: minmax(0, 1fr) 460px;
+  gap: 1.25rem;
+  min-height: 720px;
+  height: auto;
   position: relative;
-  overflow: hidden;
+  margin-bottom: 2.5rem;
 }
 
-@media (max-width: 860px) {
+@media (max-width: 980px) {
   .main-content-layout,
   .dashboard-grid {
     grid-template-columns: 1fr;
-    height: auto;
     min-height: auto;
-    overflow: visible;
+    height: auto;
   }
 }
 
@@ -349,9 +365,12 @@ body {
 .map-canvas-panel {
   position: relative;
   width: 100%;
-  height: 100%;
-  min-height: 0;
+  height: 720px;
+  min-height: 550px;
   background: #E8F1F7;
+  border-radius: var(--radius-lg);
+  border: 1.5px solid var(--soft-border);
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
 }
 
@@ -503,14 +522,17 @@ body {
    ========================================================================== */
 
 .intelligence-panel {
-  height: 100%;
+  height: 720px;
+  max-height: 720px;
   overflow-y: auto;
   padding: 1.25rem;
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
   background: var(--bg-panel);
-  border-left: 1px solid var(--soft-border);
+  border: 1.5px solid var(--soft-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
 }
 
 /* Card System: Soft Cloud Panels */
