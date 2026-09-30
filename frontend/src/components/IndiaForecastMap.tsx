@@ -37,7 +37,7 @@ export const IndiaForecastMap: React.FC<IndiaForecastMapProps> = ({
   const geoJsonLayerRef = useRef<L.GeoJSON | null>(null);
 
   // Dual View / Split Comparison Slider states (0% = 100% Raw NWP, 100% = 100% RAAP-X)
-  const [splitSliderActive, setSplitSliderActive] = useState<boolean>(false);
+  const [splitSliderActive, setSplitSliderActive] = useState<boolean>(true);
   const [splitPosition, setSplitPosition] = useState<number>(50);
 
   // Visualization display settings
@@ -497,7 +497,7 @@ export const IndiaForecastMap: React.FC<IndiaForecastMapProps> = ({
           }}
         >
           <Sliders size={12} color={splitSliderActive ? '#FFFFFF' : 'var(--sky-blue)'} />
-          <span>{splitSliderActive ? 'Exit Split Slider' : 'Dual View Slider'}</span>
+          <span>{splitSliderActive ? 'Hide Split Slider' : 'Dual View Slider'}</span>
         </button>
 
         <button
@@ -524,6 +524,104 @@ export const IndiaForecastMap: React.FC<IndiaForecastMapProps> = ({
           <span>Reset India View</span>
         </button>
       </div>
+
+      {/* Prominent Map Dual-View Comparison Slider Header Bar */}
+      {splitSliderActive && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 56,
+            left: 14,
+            right: 14,
+            zIndex: 840,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '0.5rem',
+            padding: '0.5rem 0.85rem',
+            background: 'rgba(255, 255, 255, 0.96)',
+            backdropFilter: 'blur(10px)',
+            borderRadius: 'var(--radius-md)',
+            border: '1.5px solid #D5E5F2',
+            boxShadow: '0 4px 14px rgba(27, 73, 101, 0.12)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Sliders size={16} color="var(--sky-blue)" />
+            <div>
+              <span style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--deep-blue)' }}>
+                Map Split Slider (Interactive Inference):
+              </span>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginLeft: '0.35rem' }}>
+                Drag slider across India to inspect Raw NWP vs. AI-Corrected Rain
+              </span>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <button
+              onClick={() => setSplitPosition(0)}
+              style={{
+                padding: '0.2rem 0.5rem',
+                borderRadius: '4px',
+                fontSize: '0.7rem',
+                fontWeight: splitPosition === 0 ? 800 : 600,
+                border: splitPosition === 0 ? '1.5px solid var(--accent-blue)' : '1px solid #D0E1ED',
+                background: splitPosition === 0 ? '#E6F4FC' : '#FFFFFF',
+                color: 'var(--deep-blue)',
+                cursor: 'pointer',
+              }}
+            >
+              100% NWP
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#1B4965' }}>◀ NWP</span>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={splitPosition}
+                onChange={(e) => setSplitPosition(Number(e.target.value))}
+                style={{ width: '130px', accentColor: 'var(--deep-blue)', cursor: 'ew-resize' }}
+                aria-label="Map split position slider"
+              />
+              <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#2E8B80' }}>AI ▶</span>
+            </div>
+
+            <button
+              onClick={() => setSplitPosition(100)}
+              style={{
+                padding: '0.2rem 0.5rem',
+                borderRadius: '4px',
+                fontSize: '0.7rem',
+                fontWeight: splitPosition === 100 ? 800 : 600,
+                border: splitPosition === 100 ? '1.5px solid #285A7A' : '1px solid #D0E1ED',
+                background: splitPosition === 100 ? '#EAF2F7' : '#FFFFFF',
+                color: 'var(--deep-blue)',
+                cursor: 'pointer',
+              }}
+            >
+              100% RAAP-X
+            </button>
+
+            <span
+              style={{
+                background: 'var(--deep-blue)',
+                color: '#FFFFFF',
+                padding: '0.2rem 0.5rem',
+                borderRadius: '4px',
+                fontSize: '0.7rem',
+                fontWeight: 800,
+                fontFamily: 'monospace',
+              }}
+            >
+              {splitPosition}% Split
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Map Container */}
       <div ref={mapContainerRef} className="map-container" />
@@ -654,8 +752,8 @@ export const IndiaForecastMap: React.FC<IndiaForecastMapProps> = ({
         <div
           style={{
             position: 'absolute',
-            top: 16,
-            right: 16,
+            bottom: 20,
+            left: 20,
             zIndex: 900,
             background: 'rgba(255, 255, 255, 0.95)',
             padding: '0.4rem 0.8rem',
