@@ -17,4 +17,4 @@ services:
         generateValue: true
       - key: LOG_LEVEL
         value: INFO
-    healthCheckPath: /api/v1/health
+    healthCheckPath: /health

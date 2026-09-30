@@ -1,9 +1,17 @@
 # ==============================================================================
-# Multi-Stage Production Dockerfile for VARSHAA (RAIN-REPAIR X) Backend
+# Multi-Stage Production Dockerfile for VARSHAA (RAIN-REPAIR X) Full-Stack Platform
 # ==============================================================================
 
-# Stage 1: Build & Dependency Wheel Cache
-FROM python:3.11-slim AS builder
+# Stage 1: Build Frontend React SPA
+FROM node:20-slim AS frontend-builder
+WORKDIR /frontend
+COPY frontend/package*.json ./
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build
+
+# Stage 2: Build Python Dependency Wheel Cache
+FROM python:3.11-slim AS python-builder
 
 WORKDIR /build
 
@@ -22,7 +30,7 @@ RUN pip install --no-cache-dir --upgrade pip wheel && \
     pip wheel --no-cache-dir --wheel-dir /build/wheels -r requirements.txt
 
 
-# Stage 2: Minimal Production Runtime
+# Stage 3: Minimal Production Runtime
 FROM python:3.11-slim AS runner
 
 WORKDIR /app
@@ -38,17 +46,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Create non-root system user and group
 RUN groupadd -r varshaa && useradd -r -g varshaa -d /app -s /sbin/nologin varshaa
 
-# Copy python pre-built wheels from builder
-COPY --from=builder /build/wheels /wheels
+# Copy python pre-built wheels from python-builder
+COPY --from=python-builder /build/wheels /wheels
 RUN pip install --no-cache-dir /wheels/* && rm -rf /wheels
 
-# Copy application source code and built frontend
+# Copy application source code
 COPY backend/ /app/backend/
 COPY src/ /app/src/
 COPY configs/ /app/configs/
 COPY data/ /app/data/
 COPY models/ /app/models/
-COPY frontend/dist/ /app/frontend/dist/
+
+# Copy built frontend assets from frontend-builder stage
+COPY --from=frontend-builder /frontend/dist/ /app/frontend/dist/
 
 # Ensure directory permissions for non-root user
 RUN mkdir -p /app/logs /app/scratch /app/data/interim /app/data/processed && \
@@ -70,4 +80,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
 # Production WSGI/ASGI Runner
-CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]

@@ -142,6 +142,15 @@ def create_app() -> FastAPI:
         async def icons():
             return FileResponse(str(dist_dir / "icons.svg"))
 
+    @app.get("/health", tags=["Health"])
+    def health_check():
+        return {
+            "status": "healthy",
+            "service": "RAIN-REPAIR X",
+            "version": "1.0.0",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
     @app.get("/", tags=["Root"])
     def root(request: Request):
         accept = request.headers.get("accept", "")
