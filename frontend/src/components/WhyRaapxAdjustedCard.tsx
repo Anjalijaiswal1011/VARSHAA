@@ -14,10 +14,10 @@ export const WhyRaapxAdjustedCard: React.FC<WhyRaapxAdjustedCardProps> = ({ dist
   const hasRawNwp = rawNwp !== null && !isNaN(rawNwp);
   const hasP50 = p50 !== null && !isNaN(p50);
   const diff = hasRawNwp && hasP50 ? (rainfall.difference !== undefined ? rainfall.difference : p50 - rawNwp) : null;
-  const regimeName = district.dominant_regime || explanation?.dominant_regime || 'ACTIVE_MONSOON';
+  const regimeName = district?.dominant_regime || district?.regime?.dominant || explanation?.dominant_regime || 'ACTIVE_MONSOON';
   const regimeConf = explanation?.regime_confidence
     ? Math.round(explanation.regime_confidence * 100)
-    : district.regime?.dominant_probability
+    : district?.regime?.dominant_probability
     ? Math.round(district.regime.dominant_probability * 100)
     : null;
 

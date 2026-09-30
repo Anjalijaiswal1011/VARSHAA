@@ -172,7 +172,7 @@ export const WhyRaapxStoryFlow: React.FC<WhyRaapxStoryFlowProps> = ({ district, 
               </div>
             </div>
             <div style={{ background: '#EAF6FD', border: '1px solid #D0E5F5', padding: '0.2rem 0.55rem', borderRadius: '9999px', fontSize: '0.72rem', fontWeight: 700, color: 'var(--deep-blue)' }}>
-              Dominant: {dominantRegime.replace('_', ' ')} {dominantProb !== null ? `(${(dominantProb * 100).toFixed(0)}%)` : ''}
+              Dominant: {(dominantRegime || 'NORMAL_TRANSITIONAL').replace(/_/g, ' ')} {dominantProb !== null ? `(${(dominantProb * 100).toFixed(0)}%)` : ''}
             </div>
           </div>
 

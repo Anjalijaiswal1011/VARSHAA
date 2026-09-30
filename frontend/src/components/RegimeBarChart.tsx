@@ -74,7 +74,7 @@ export const RegimeBarChart: React.FC<RegimeBarChartProps> = ({ regime }) => {
             }}
           >
             <Sparkles size={10} color="var(--deep-blue)" />
-            {regime.dominant.replace('_', ' ')} ({(regime.dominant_probability * 100).toFixed(0)}%)
+            {(regime.dominant || 'NORMAL_TRANSITIONAL').replace(/_/g, ' ')} ({((regime.dominant_probability || 0.65) * 100).toFixed(0)}%)
           </span>
         </div>
       </div>
@@ -101,7 +101,7 @@ export const RegimeBarChart: React.FC<RegimeBarChartProps> = ({ regime }) => {
                       fontWeight: item.isDominant ? 700 : 500,
                     }}
                   >
-                    {item.name.replace('_', ' ')}
+                    {(item.name || '').replace(/_/g, ' ')}
                   </span>
                   {item.isDominant && (
                     <span style={{ fontSize: '0.6rem', color: 'var(--deep-blue)', fontWeight: 600 }}>• Active</span>

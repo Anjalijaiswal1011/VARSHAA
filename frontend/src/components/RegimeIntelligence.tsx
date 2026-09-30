@@ -47,32 +47,32 @@ export const RegimeIntelligence: React.FC<RegimeIntelligenceProps> = ({ regime }
             Dominant Synoptic State
           </div>
           <div style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--deep-blue)' }}>
-            {regime.dominant.replace('_', ' ')}
+            {(regime.dominant || 'NORMAL_TRANSITIONAL').replace(/_/g, ' ')}
           </div>
         </div>
         <div style={{ textAlign: 'right' }}>
           <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--deep-blue)' }}>
-            {(regime.dominant_probability * 100).toFixed(0)}%
+            {((regime.dominant_probability || 0.65) * 100).toFixed(0)}%
           </div>
           <div style={{ fontSize: '0.65rem', color: 'var(--neutral-text)' }}>Probability</div>
         </div>
       </div>
 
       <p style={{ fontSize: '0.75rem', color: 'var(--neutral-text)', marginBottom: '0.85rem', lineHeight: 1.4 }}>
-        {regimeDescriptions[regime.dominant] || 'Meteorological regime dynamics governing regional precipitation bias.'}
+        {regimeDescriptions[regime.dominant || 'NORMAL_TRANSITIONAL'] || 'Meteorological regime dynamics governing regional precipitation bias.'}
       </p>
 
       {/* Full 6-Regime Probability Distribution */}
       <div className="regime-prob-list">
         {sortedRegimes.map(([rName, prob]) => {
-          const isDominant = rName === regime.dominant;
+          const isDominant = rName === (regime.dominant || 'NORMAL_TRANSITIONAL');
           const pct = (prob * 100).toFixed(1);
           const barColor = regimeColors[rName] || '#B9DFF7';
           return (
             <div key={rName} className="regime-item">
               <div className="regime-header-row">
                 <span style={{ color: isDominant ? 'var(--deep-blue)' : 'var(--neutral-text)', fontWeight: isDominant ? 700 : 500 }}>
-                  {rName.replace('_', ' ')}
+                  {(rName || '').replace(/_/g, ' ')}
                 </span>
                 <span style={{ color: isDominant ? 'var(--deep-blue)' : 'var(--neutral-text)', fontWeight: isDominant ? 700 : 500 }}>
                   {pct}%

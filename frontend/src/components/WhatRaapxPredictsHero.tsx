@@ -397,7 +397,7 @@ export const WhatRaapxPredictsHero: React.FC<WhatRaapxPredictsHeroProps> = ({
 
       {/* Immediate User Understanding Sentence */}
       <div style={{ marginTop: '0.65rem', fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
-        💡 <strong>Key Takeaway:</strong> RAAP-X corrected the raw NWP forecast by <strong>{diff !== null ? (diff >= 0 ? `+${diff.toFixed(1)} mm` : `${diff.toFixed(1)} mm`) : 'calibrated adjustment'}</strong> for {districtName} based on multi-scale error memory under the prevailing <strong>{(district.dominant_regime || 'ACTIVE_MONSOON').replace('_', ' ')}</strong> regime.
+        💡 <strong>Key Takeaway:</strong> RAAP-X corrected the raw NWP forecast by <strong>{diff !== null ? (diff >= 0 ? `+${diff.toFixed(1)} mm` : `${diff.toFixed(1)} mm`) : 'calibrated adjustment'}</strong> for {districtName} based on multi-scale error memory under the prevailing <strong>{(district.dominant_regime || district.regime?.dominant || 'ACTIVE_MONSOON').replace(/_/g, ' ')}</strong> regime.
       </div>
     </div>
   );

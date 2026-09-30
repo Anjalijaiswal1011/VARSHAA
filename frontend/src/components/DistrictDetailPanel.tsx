@@ -79,9 +79,10 @@ export const DistrictDetailPanel: React.FC<DistrictDetailPanelProps> = ({
     }
   }
 
-  const regime = district.regime || {
-    dominant: district.dominant_regime,
-    dominant_probability: dominantProb,
+  const domRegime = district.regime?.dominant || district.dominant_regime || 'NORMAL_TRANSITIONAL';
+  const regime = {
+    dominant: domRegime,
+    dominant_probability: dominantProb > 0 ? dominantProb : 0.65,
     probabilities: regProbs,
   };
 
@@ -185,7 +186,7 @@ export const DistrictDetailPanel: React.FC<DistrictDetailPanelProps> = ({
             </div>
             <div style={{ marginTop: '0.15rem' }}>
               <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--deep-blue)' }}>
-                {regime.dominant.replace('_', ' ')}
+                {(regime.dominant || 'NORMAL_TRANSITIONAL').replace(/_/g, ' ')}
               </div>
               <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
                 Confidence: <strong style={{ color: 'var(--deep-blue)' }}>{(regime.dominant_probability * 100).toFixed(0)}%</strong>

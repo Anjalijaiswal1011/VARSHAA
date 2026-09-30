@@ -384,7 +384,7 @@ export const IndiaForecastMap: React.FC<IndiaForecastMapProps> = ({
         const heavyProb = dRecord
           ? (dRecord.heavy_rainfall_probability * 100).toFixed(0)
           : ((props.prob_heavy_rain || 0) * 100).toFixed(0);
-        const regime = dRecord ? dRecord.dominant_regime : props.active_regime || 'NORMAL_TRANSITIONAL';
+        const regime = (dRecord?.dominant_regime || props.active_regime || 'NORMAL_TRANSITIONAL');
 
         layer.bindTooltip(
           `<div style="font-family: Outfit, sans-serif; min-width: 175px;">
@@ -404,7 +404,7 @@ export const IndiaForecastMap: React.FC<IndiaForecastMapProps> = ({
               <span>Heavy Risk: <strong>${heavyProb}%</strong></span>
             </div>
             <div style="font-size: 0.67rem; color: #7E93A2; margin-top: 3px; border-top: 1px dashed #D0E5F5; padding-top: 2px;">
-              ${regime.replace('_', ' ')}
+              ${(regime || 'NORMAL_TRANSITIONAL').replace(/_/g, ' ')}
             </div>
           </div>`,
           { sticky: true, className: 'leaflet-tooltip-sky' }

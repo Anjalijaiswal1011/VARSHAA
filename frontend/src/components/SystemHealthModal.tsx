@@ -81,7 +81,7 @@ export const SystemHealthModal: React.FC<SystemHealthModalProps> = ({
                 return (
                   <div key={name} className="health-item">
                     <span style={{ textTransform: 'capitalize', color: 'var(--deep-blue)', fontWeight: 500 }}>
-                      {name.replace('_', ' ')}
+                      {(name || '').replace(/_/g, ' ')}
                     </span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                       {getStatusIcon(statusStr)}
@@ -103,7 +103,7 @@ export const SystemHealthModal: React.FC<SystemHealthModalProps> = ({
               ].map((subsystem) => (
                 <div key={subsystem} className="health-item">
                   <span style={{ textTransform: 'capitalize', color: 'var(--deep-blue)', fontWeight: 500 }}>
-                    {subsystem.replace('_', ' ')}
+                    {(subsystem || '').replace(/_/g, ' ')}
                   </span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                     <CheckCircle size={15} color="#2E8B80" />
