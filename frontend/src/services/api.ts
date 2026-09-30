@@ -20,13 +20,39 @@ const API_BASE_URL = '/api/v1';
 const requestCache = new Map<string, { timestamp: number; data: any }>();
 const CACHE_TTL_MS = 60 * 1000; // 1 minute
 
+function getFallbackDataUrl(apiUrl: string): string | null {
+  const base = import.meta.env.BASE_URL || './';
+  const cleanBase = base.endsWith('/') ? base : `${base}/`;
+
+  const [path, queryString] = apiUrl.split('?');
+  const params = new URLSearchParams(queryString || '');
+  const leadTime = params.get('lead_time') || '24';
+
+  if (path.includes('/forecast/districts') || path.includes('/forecasts/districts/geojson')) {
+    return `${cleanBase}data/districts_geojson_${leadTime}.json`;
+  }
+  if (path.includes('/forecast/rainfall-grid')) {
+    return `${cleanBase}data/rainfall_grid_${leadTime}.json`;
+  }
+  if (path.includes('/forecasts/districts')) {
+    return `${cleanBase}data/districts_records_${leadTime}.json`;
+  }
+  if (path.includes('/verification/summary')) {
+    return `${cleanBase}data/verification_summary.json`;
+  }
+  if (path.includes('/health')) {
+    return `${cleanBase}data/health_detailed.json`;
+  }
+  return null;
+}
+
 async function fetchWithCache<T>(url: string): Promise<T> {
   const cached = requestCache.get(url);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
     return cached.data as T;
   }
 
-  let res: Response;
+  let res: Response | null = null;
   try {
     res = await fetch(url, {
       headers: {
@@ -34,26 +60,45 @@ async function fetchWithCache<T>(url: string): Promise<T> {
       },
     });
   } catch (_networkErr) {
-    const errBody: ProblemDetails = {
-      status: 503,
-      error_code: 'SERVICE_UNAVAILABLE',
-      message: 'Forecast service unavailable',
-      timestamp: new Date().toISOString(),
-    };
-    throw errBody;
+    // Backend offline / static preview mode - try fallback
+    res = null;
   }
 
-  if (!res.ok) {
+  // If live backend request failed or returned 404/503, try static dataset fallback
+  if (!res || !res.ok) {
+    const fallbackUrl = getFallbackDataUrl(url);
+    if (fallbackUrl) {
+      try {
+        const fbRes = await fetch(fallbackUrl);
+        if (fbRes.ok) {
+          const fbData = (await fbRes.json()) as T;
+          requestCache.set(url, { timestamp: Date.now(), data: fbData });
+          return fbData;
+        }
+      } catch (_fbErr) {
+        // Fallback failed, continue to standard error handling
+      }
+    }
+
     let errBody: ProblemDetails;
-    try {
-      errBody = await res.json();
-    } catch {
+    if (res) {
+      try {
+        errBody = await res.json();
+      } catch {
+        errBody = {
+          status: res.status,
+          error_code: res.status === 404 ? 'DISTRICT_NOT_FOUND' : 'HTTP_ERROR',
+          message: res.status === 404
+            ? 'No forecast available for this district and lead time.'
+            : `HTTP error ${res.status}: ${res.statusText}`,
+          timestamp: new Date().toISOString(),
+        };
+      }
+    } else {
       errBody = {
-        status: res.status,
-        error_code: res.status === 404 ? 'DISTRICT_NOT_FOUND' : 'HTTP_ERROR',
-        message: res.status === 404
-          ? 'No forecast available for this district and lead time.'
-          : `HTTP error ${res.status}: ${res.statusText}`,
+        status: 503,
+        error_code: 'SERVICE_UNAVAILABLE',
+        message: 'Forecast service unavailable',
         timestamp: new Date().toISOString(),
       };
     }
@@ -95,7 +140,25 @@ export async function getSingleDistrictForecast(
   if (forecastTime) query.set('forecast_time', forecastTime);
 
   const url = `${API_BASE_URL}/forecasts/districts/${encodeURIComponent(districtId)}?${query.toString()}`;
-  return fetchWithCache<CanonicalDistrictForecastRecord>(url);
+  try {
+    return await fetchWithCache<CanonicalDistrictForecastRecord>(url);
+  } catch (err) {
+    // Attempt fallback from geojson features or records
+    try {
+      const geo = await getDistrictGeoJSON(leadTime);
+      const feat = geo.features.find(
+        (f) =>
+          f.properties.district_id?.toUpperCase() === districtId.toUpperCase() ||
+          f.properties.district_name?.toUpperCase() === districtId.toUpperCase()
+      );
+      if (feat && feat.properties) {
+        return feat.properties as any;
+      }
+    } catch {
+      // pass through original error
+    }
+    throw err;
+  }
 }
 
 export async function getGridForecasts(params: {

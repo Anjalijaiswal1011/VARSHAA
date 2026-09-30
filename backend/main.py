@@ -58,8 +58,8 @@ def create_app() -> FastAPI:
     # 2. Request Tracing & Audit Log Middleware
     app.add_middleware(RequestTracingMiddleware)
 
-    # 3. Rate Limiting Middleware (120 req/min)
-    app.add_middleware(RateLimiterMiddleware, requests_limit=120, window_seconds=60)
+    # 3. Rate Limiting Middleware (1000 req/min for smooth spatial tile rendering)
+    app.add_middleware(RateLimiterMiddleware, requests_limit=1000, window_seconds=60)
 
     # 4. GZip Compression Middleware (for large GeoJSON FeatureCollections)
     app.add_middleware(GZipMiddleware, minimum_size=1000)
@@ -134,8 +134,19 @@ def create_app() -> FastAPI:
         async def serve_dashboard():
             return FileResponse(str(dist_dir / "index.html"))
 
+        @app.get("/favicon.svg", include_in_schema=False)
+        async def favicon():
+            return FileResponse(str(dist_dir / "favicon.svg"))
+
+        @app.get("/icons.svg", include_in_schema=False)
+        async def icons():
+            return FileResponse(str(dist_dir / "icons.svg"))
+
     @app.get("/", tags=["Root"])
-    def root():
+    def root(request: Request):
+        accept = request.headers.get("accept", "")
+        if "text/html" in accept and dist_dir.exists() and (dist_dir / "index.html").exists():
+            return FileResponse(str(dist_dir / "index.html"))
         return {
             "name": "RAIN-REPAIR X Production Backend API",
             "version": "1.0.0",

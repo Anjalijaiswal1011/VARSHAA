@@ -1,0 +1,1 @@
+{"evaluation_period":"2026-06-01 to 2026-09-29","metrics":{"raw_nwp_rmse":24.8,"corrected_rmse":16.2,"rmse_improvement_pct":34.68,"raw_nwp_mae":14.3,"corrected_mae":9.7,"heavy_rain_csi_raw":0.28,"heavy_rain_csi_corrected":0.44,"crps_raw":11.2,"crps_corrected":7.4}}

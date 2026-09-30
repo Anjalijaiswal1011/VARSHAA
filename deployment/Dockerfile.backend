@@ -42,12 +42,13 @@ RUN groupadd -r varshaa && useradd -r -g varshaa -d /app -s /sbin/nologin varsha
 COPY --from=builder /build/wheels /wheels
 RUN pip install --no-cache-dir /wheels/* && rm -rf /wheels
 
-# Copy application source code
+# Copy application source code and built frontend
 COPY backend/ /app/backend/
 COPY src/ /app/src/
 COPY configs/ /app/configs/
 COPY data/ /app/data/
 COPY models/ /app/models/
+COPY frontend/dist/ /app/frontend/dist/
 
 # Ensure directory permissions for non-root user
 RUN mkdir -p /app/logs /app/scratch /app/data/interim /app/data/processed && \
